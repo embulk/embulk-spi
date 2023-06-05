@@ -1,13 +1,15 @@
 Contributing to Embulk
 =======================
 
-We love your contributions! Before making a Pull Request, please read and follow this contribution guideline.
+Please read the following guideline before making a Pull Request. We'd love your conscientious contribution!
 
 
-Issue before Pull Request
---------------------------
+EEP before Pull Request
+------------------------
 
-Consider [filing an Issue at first](https://github.com/embulk/embulk/issues/new) before creating a Pull Request, even for small fixes, unless you are named a primary contributor.
+Making a change in the Embulk SPI would always have a risk of breaking compatibility.
+
+Follow our [EEP process](https://github.com/embulk/embulk/blob/master/docs/eeps/eep-0001.md) whenever you wanted to make a change in the Embulk SPI.
 
 
 License
