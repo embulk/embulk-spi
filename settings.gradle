@@ -1,8 +1,1 @@
-rootProject.name = 'embulk'
-
-include 'embulk-spi'
-include 'embulk-core'
-include 'embulk-deps'
-include 'embulk-ruby'
-include 'embulk-junit4'
-include 'test-helpers'
+rootProject.name = "embulk-spi"

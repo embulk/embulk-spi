@@ -13,13 +13,6 @@ jobs:
         - ubuntu-latest
         - macOS-latest
         - windows-latest
-        gradle_task:
-        - ":embulk-spi:check"
-        - ":embulk-core:check"
-        - ":embulk-ruby:check"
-        - ":embulk-junit4:check"
-        - ":embulk-deps:check"
-        - ":executable"
     steps:
     - uses: actions/checkout@v3
     - name: Set up OpenJDK 8
@@ -28,4 +21,4 @@ jobs:
         java-version: 8
         distribution: "zulu"
     - name: Check
-      run: ./gradlew ${{ matrix.gradle_task }}
+      run: ./gradlew check
