@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import org.msgpack.value.ImmutableIntegerValue;
 import org.msgpack.value.IntegerValue;
 import org.msgpack.value.Value;
+import org.msgpack.value.impl.ImmutableBigIntegerValueImpl;
 import org.msgpack.value.impl.ImmutableLongValueImpl;
 
 /**
@@ -47,7 +48,14 @@ public final class JsonLong implements JsonNumber {
         if (immutableInteger instanceof ImmutableLongValueImpl) {
             return new JsonLong((ImmutableLongValueImpl) immutableInteger);
         }
-        throw new IllegalArgumentException("MessagePack's Integer type is not long.");
+        if (immutableInteger instanceof ImmutableBigIntegerValueImpl) {
+            final ImmutableBigIntegerValueImpl immutableBigInteger = (ImmutableBigIntegerValueImpl) immutableInteger;
+            if (immutableBigInteger.isInLongRange()) {
+                return JsonLong.of(immutableBigInteger.asLong());
+            }
+            throw new IllegalArgumentException("MessagePack integer is out of the range of long: " + immutableBigInteger);
+        }
+        throw new IllegalArgumentException("MessagePack integer is invalid: " + immutableInteger);
     }
 
     /**
