@@ -294,6 +294,4 @@ public class TestJsonLong {
         assertEquals(JsonLong.of(Long.MAX_VALUE), JsonValue.fromMsgpack(ValueFactory.newInteger(BigInteger.valueOf(Long.MAX_VALUE))));
         assertThrows(IllegalArgumentException.class, () -> JsonValue.fromMsgpack(ValueFactory.newInteger(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE))));
     }
-
-
 }
