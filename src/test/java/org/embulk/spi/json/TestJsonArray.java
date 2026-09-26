@@ -23,6 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.msgpack.value.ValueFactory;
 
@@ -72,8 +76,9 @@ public class TestJsonArray {
 
         assertEquals(ValueFactory.emptyArray(), jsonArray.toMsgpack());
 
-        // JsonArray#equals must normally reject a fake imitation of JsonArray.
-        assertFalse(jsonArray.equals(FakeJsonArray.of()));
+        // JsonArray#equals follows List#equals. It is equal to any List with equal elements in the same order,
+        // even to a fake imitation of JsonArray.
+        assertTrue(jsonArray.equals(FakeJsonArray.of()));
     }
 
     @Test
@@ -104,8 +109,9 @@ public class TestJsonArray {
 
         assertEquals(ValueFactory.newArray(ValueFactory.newInteger(987)), jsonArray.toMsgpack());
 
-        // JsonArray#equals must normally reject a fake imitation of JsonArray.
-        assertFalse(jsonArray.equals(FakeJsonArray.of(JsonLong.of(987))));
+        // JsonArray#equals follows List#equals. It is equal to any List with equal elements in the same order,
+        // even to a fake imitation of JsonArray.
+        assertTrue(jsonArray.equals(FakeJsonArray.of(JsonLong.of(987))));
     }
 
     @Test
@@ -158,8 +164,9 @@ public class TestJsonArray {
                 ValueFactory.newArray(ValueFactory.newInteger(987), ValueFactory.newString("foo"), ValueFactory.newBoolean(true)),
                 jsonArray.toMsgpack());
 
-        // JsonArray#equals must normally reject a fake imitation of JsonArray.
-        assertFalse(jsonArray.equals(FakeJsonArray.of(JsonLong.of(987), JsonString.of("foo"), JsonBoolean.TRUE)));
+        // JsonArray#equals follows List#equals. It is equal to any List with equal elements in the same order,
+        // even to a fake imitation of JsonArray.
+        assertTrue(jsonArray.equals(FakeJsonArray.of(JsonLong.of(987), JsonString.of("foo"), JsonBoolean.TRUE)));
     }
 
     @Test
@@ -212,8 +219,9 @@ public class TestJsonArray {
                 ValueFactory.newArray(ValueFactory.newInteger(987), ValueFactory.newString("foo"), ValueFactory.newBoolean(true)),
                 jsonArray.toMsgpack());
 
-        // JsonArray#equals must normally reject a fake imitation of JsonArray.
-        assertFalse(jsonArray.equals(FakeJsonArray.of(JsonLong.of(987), JsonString.of("foo"), JsonBoolean.TRUE)));
+        // JsonArray#equals follows List#equals. It is equal to any List with equal elements in the same order,
+        // even to a fake imitation of JsonArray.
+        assertTrue(jsonArray.equals(FakeJsonArray.of(JsonLong.of(987), JsonString.of("foo"), JsonBoolean.TRUE)));
     }
 
     @Test
@@ -266,8 +274,9 @@ public class TestJsonArray {
                 ValueFactory.newArray(ValueFactory.newInteger(1234), ValueFactory.newString("foo"), ValueFactory.newBoolean(true)),
                 jsonArray.toMsgpack());
 
-        // JsonArray#equals must normally reject a fake imitation of JsonArray.
-        assertFalse(jsonArray.equals(FakeJsonArray.of(JsonLong.of(1234), JsonString.of("foo"), JsonBoolean.TRUE)));
+        // JsonArray#equals follows List#equals. It is equal to any List with equal elements in the same order,
+        // even to a fake imitation of JsonArray.
+        assertTrue(jsonArray.equals(FakeJsonArray.of(JsonLong.of(1234), JsonString.of("foo"), JsonBoolean.TRUE)));
     }
 
     @Test
@@ -323,8 +332,9 @@ public class TestJsonArray {
                         ValueFactory.newBoolean(true)),
                 jsonArray.toMsgpack());
 
-        // JsonArray#equals must normally reject a fake imitation of JsonArray.
-        assertFalse(jsonArray.equals(
+        // JsonArray#equals follows List#equals. It is equal to any List with equal elements in the same order,
+        // even to a fake imitation of JsonArray.
+        assertTrue(jsonArray.equals(
                             FakeJsonArray.of(
                                     JsonLong.of(987),
                                     JsonArray.of(JsonString.of("foo"), JsonString.of("bar"), JsonString.of("baz")),
@@ -345,4 +355,75 @@ public class TestJsonArray {
                                 ValueFactory.newString("foo"), ValueFactory.newString("bar"), ValueFactory.newString("baz")),
                         ValueFactory.newBoolean(true))));
     }
+
+    @Test
+    public void testEqualityWithGeneralList() {
+        final JsonArray jsonArray = JsonArray.of(JsonLong.of(987), JsonString.of("foo"), JsonBoolean.TRUE);
+
+        final ArrayList<JsonValue> arrayList = new ArrayList<>();
+        arrayList.add(JsonLong.of(987));
+        arrayList.add(JsonString.of("foo"));
+        arrayList.add(JsonBoolean.TRUE);
+        final LinkedList<JsonValue> linkedList = new LinkedList<>(arrayList);
+
+        // JsonArray#equals follows List#equals. It must be symmetric with other List implementations.
+        assertTrue(jsonArray.equals(arrayList));
+        assertTrue(arrayList.equals(jsonArray));
+        assertTrue(jsonArray.equals(linkedList));
+        assertTrue(linkedList.equals(jsonArray));
+
+        // JsonArray#hashCode follows List#hashCode to be consistent with JsonArray#equals.
+        assertEquals(arrayList.hashCode(), jsonArray.hashCode());
+        assertEquals(linkedList.hashCode(), jsonArray.hashCode());
+
+        // A List with the same elements in a different order is not equal.
+        final ArrayList<JsonValue> reordered = new ArrayList<>();
+        reordered.add(JsonString.of("foo"));
+        reordered.add(JsonLong.of(987));
+        reordered.add(JsonBoolean.TRUE);
+        assertFalse(jsonArray.equals(reordered));
+        assertFalse(reordered.equals(jsonArray));
+
+        // A List with a different size is not equal.
+        final List<JsonValue> shorter = arrayList.subList(0, 2);
+        assertFalse(jsonArray.equals(shorter));
+        assertFalse(shorter.equals(jsonArray));
+
+        // A List of Java objects which are not JsonValue is not equal.
+        final ArrayList<Object> javaObjects = new ArrayList<>();
+        javaObjects.add(987L);
+        javaObjects.add("foo");
+        javaObjects.add(true);
+        assertFalse(jsonArray.equals(javaObjects));
+        assertFalse(javaObjects.equals(jsonArray));
+
+        // A Collection which is not a List is not equal.
+        final LinkedHashSet<JsonValue> set = new LinkedHashSet<>(arrayList);
+        assertFalse(jsonArray.equals(set));
+        assertFalse(set.equals(jsonArray));
+    }
+
+    @Test
+    public void testNestedEqualityWithGeneralList() {
+        final JsonArray jsonArray = JsonArray.of(
+                JsonLong.of(987),
+                JsonArray.of(JsonString.of("foo"), JsonString.of("bar")),
+                JsonObject.of(JsonString.of("baz"), JsonBoolean.FALSE));
+
+        final ArrayList<JsonValue> innerList = new ArrayList<>();
+        innerList.add(JsonString.of("foo"));
+        innerList.add(JsonString.of("bar"));
+        final LinkedHashMap<String, JsonValue> innerMap = new LinkedHashMap<>();
+        innerMap.put("baz", JsonBoolean.FALSE);
+        final ArrayList<Object> list = new ArrayList<>();
+        list.add(JsonLong.of(987));
+        list.add(innerList);
+        list.add(innerMap);
+
+        // Nested JsonArray and JsonObject also follow List#equals and Map#equals.
+        assertTrue(jsonArray.equals(list));
+        assertTrue(list.equals(jsonArray));
+        assertEquals(list.hashCode(), jsonArray.hashCode());
+    }
+
 }

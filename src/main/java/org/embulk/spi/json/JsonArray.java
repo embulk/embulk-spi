@@ -290,10 +290,24 @@ public final class JsonArray extends AbstractList<JsonValue> implements JsonValu
     /**
      * Compares the specified object with this JSON array for equality.
      *
-     * <p>Note that it can return {@code true} only when {@link JsonArray} is given. It checks the equality as a JSON array.
-     * It does not return {@code true} for a general {@link java.util.List} even though the given list contains the same elements.
+     * <p>It returns {@code true} if and only if the specified object is also a {@link java.util.List}, both lists have the same
+     * size, and all corresponding pairs of elements in the two lists are equal.
+     *
+     * <p>Note that it can return {@code true} not only for {@link JsonArray}, but also for a general {@link java.util.List},
+     * such as {@link java.util.ArrayList}, when the given list contains equal {@link JsonValue} elements in the same order.
+     * It follows the general contract of {@link java.util.List#equals(Object)} as {@link JsonArray} is a {@link java.util.List},
+     * so that the equality is symmetric with any other {@link java.util.List} implementation.
+     *
+     * <p>Also note that it does not return {@code true} for a {@link java.util.List} that contains a Java object that is not a
+     * {@link JsonValue}. For example, a {@link java.util.List} that contains a Java {@link java.lang.String} instead of a
+     * {@link JsonString} is never equal to {@link JsonArray} as {@link JsonString} is never equal to {@link java.lang.String}.
+     *
+     * <p>It returned {@code true} only for {@link JsonArray} until the Embulk SPI v0.11. However, that {@code equals} behavior
+     * violated the symmetry required by its contract. It has changed since the Embulk SPI v0.12.
      *
      * @return {@code true} if the specified object is equal to this JSON array
+     *
+     * @see java.util.List#equals(Object)
      *
      * @since 0.10.42
      */
@@ -303,21 +317,23 @@ public final class JsonArray extends AbstractList<JsonValue> implements JsonValu
             return true;
         }
 
-        // Check by `instanceof` in case against unexpected arbitrary extension of JsonValue.
-        if (!(otherObject instanceof JsonArray)) {
-            return false;
+        if (otherObject instanceof JsonArray) {
+            // A shortcut for JsonArray. It is equivalent to the general contract of List#equals below.
+            return Arrays.equals(this.values, ((JsonArray) otherObject).values);
         }
 
-        final JsonArray other = (JsonArray) otherObject;
-
-        // The equality of JsonArray should be checked exactly as Java arrays, unlike JsonObject.
-        return Arrays.equals(this.values, other.values);
+        // Follow the general contract of List#equals so that the equality is symmetric with other List implementations.
+        return super.equals(otherObject);
     }
 
     /**
      * Returns the hash code value for this JSON array.
      *
+     * <p>The hash code is calculated as defined in {@link java.util.List#hashCode()} to be consistent with {@link #equals(Object)}.
+     *
      * @return the hash code value for this JSON array
+     *
+     * @see java.util.List#hashCode()
      *
      * @since 0.10.42
      */

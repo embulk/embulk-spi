@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Modifier;
 import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -68,8 +70,9 @@ public class TestJsonObject {
 
         assertEquals(ValueFactory.emptyMap(), jsonObject.toMsgpack());
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of()));
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of()));
     }
 
     @Test
@@ -120,8 +123,9 @@ public class TestJsonObject {
                          ValueFactory.newString("bar"), ValueFactory.newInteger(456)),
                      jsonObject.toMsgpack());
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of(
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of(
                          JsonString.of("foo"), JsonLong.of(456),
                          JsonString.of("bar"), JsonLong.of(456))));
     }
@@ -183,8 +187,9 @@ public class TestJsonObject {
                              ValueFactory.newString("baz"), ValueFactory.newInteger(678)),
                      jsonObject.toMsgpack());
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of(
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of(
                              JsonString.of("foo"), JsonNull.of(),
                              JsonString.of("bar"), JsonArray.of(JsonLong.of(123), JsonBoolean.TRUE),
                              JsonString.of("baz"), JsonLong.of(678))));
@@ -248,8 +253,9 @@ public class TestJsonObject {
                              ValueFactory.newString("baz"), ValueFactory.newInteger(678)),
                      jsonObject.toMsgpack());
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of(
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of(
                              JsonString.of("foo"), JsonNull.of(),
                              JsonString.of("bar"), JsonArray.of(JsonLong.of(123), JsonBoolean.TRUE),
                              JsonString.of("baz"), JsonLong.of(678))));
@@ -329,8 +335,9 @@ public class TestJsonObject {
                                 JsonString.of("bar"), JsonArray.of(JsonLong.of(123), JsonBoolean.TRUE)),
                         jsonObject);
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of(
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of(
                              JsonString.of("foo"), JsonNull.of(),
                              JsonString.of("baz"), JsonLong.of(678),
                              JsonString.of("bar"), JsonArray.of(JsonLong.of(123), JsonBoolean.TRUE))));
@@ -411,8 +418,9 @@ public class TestJsonObject {
                                JsonString.of("foo"), JsonNull.of()),
                         jsonObject);
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of(
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of(
                              JsonString.of("foo"), JsonNull.of(),
                              JsonString.of("baz"), JsonLong.of(678),
                              JsonString.of("bar"), JsonArray.of(JsonLong.of(123), JsonBoolean.TRUE))));
@@ -532,8 +540,9 @@ public class TestJsonObject {
                              ValueFactory.newString("hogera"), ValueFactory.newString("bar")),
                      jsonObject.toMsgpack());
 
-        // JsonObject#equals must normally reject a fake imitation of JsonObject.
-        assertFalse(jsonObject.equals(FakeJsonObject.of(
+        // JsonObject#equals follows Map#equals. It is equal to any Map with the same mappings,
+        // even to a fake imitation of JsonObject.
+        assertTrue(jsonObject.equals(FakeJsonObject.of(
                              JsonString.of("foo"), JsonNull.of(),
                              JsonString.of("bar"), JsonArray.of(JsonLong.of(123), JsonBoolean.TRUE),
                              JsonString.of("baz"), JsonLong.of(678),
@@ -762,4 +771,69 @@ public class TestJsonObject {
                              ValueFactory.newString("piyo"), ValueFactory.newInteger(345),
                              ValueFactory.newString("hogera"), ValueFactory.newString("bar"))));
     }
+
+    @Test
+    public void testEqualityWithGeneralMap() {
+        final JsonObject jsonObject = JsonObject.of(
+                JsonString.of("foo"), JsonLong.of(456),
+                JsonString.of("bar"), JsonString.of("baz"),
+                JsonString.of("qux"), JsonNull.of());
+
+        final LinkedHashMap<String, JsonValue> linkedHashMap = new LinkedHashMap<>();
+        linkedHashMap.put("foo", JsonLong.of(456));
+        linkedHashMap.put("bar", JsonString.of("baz"));
+        linkedHashMap.put("qux", JsonNull.of());
+        final HashMap<String, JsonValue> hashMap = new HashMap<>(linkedHashMap);
+
+        // JsonObject#equals follows Map#equals. It must be symmetric with other Map implementations.
+        assertTrue(jsonObject.equals(linkedHashMap));
+        assertTrue(linkedHashMap.equals(jsonObject));
+        assertTrue(jsonObject.equals(hashMap));
+        assertTrue(hashMap.equals(jsonObject));
+
+        // JsonObject#hashCode follows Map#hashCode to be consistent with JsonObject#equals.
+        assertEquals(linkedHashMap.hashCode(), jsonObject.hashCode());
+        assertEquals(hashMap.hashCode(), jsonObject.hashCode());
+
+        // The order of the key-value pairs does not impact the equality.
+        final LinkedHashMap<String, JsonValue> reordered = new LinkedHashMap<>();
+        reordered.put("qux", JsonNull.of());
+        reordered.put("bar", JsonString.of("baz"));
+        reordered.put("foo", JsonLong.of(456));
+        assertTrue(jsonObject.equals(reordered));
+        assertTrue(reordered.equals(jsonObject));
+        assertEquals(reordered.hashCode(), jsonObject.hashCode());
+
+        // A Map with a different value is not equal.
+        final LinkedHashMap<String, JsonValue> differentValue = new LinkedHashMap<>(linkedHashMap);
+        differentValue.put("bar", JsonString.of("different"));
+        assertFalse(jsonObject.equals(differentValue));
+        assertFalse(differentValue.equals(jsonObject));
+
+        // A Map with an additional key is not equal.
+        final LinkedHashMap<String, JsonValue> additionalKey = new LinkedHashMap<>(linkedHashMap);
+        additionalKey.put("additional", JsonBoolean.TRUE);
+        assertFalse(jsonObject.equals(additionalKey));
+        assertFalse(additionalKey.equals(jsonObject));
+
+        // A Map with a missing key is not equal.
+        final LinkedHashMap<String, JsonValue> missingKey = new LinkedHashMap<>(linkedHashMap);
+        missingKey.remove("qux");
+        assertFalse(jsonObject.equals(missingKey));
+        assertFalse(missingKey.equals(jsonObject));
+
+        // A Map of Java objects which are not JsonValue is not equal.
+        final LinkedHashMap<String, Object> javaObjects = new LinkedHashMap<>();
+        javaObjects.put("foo", 456L);
+        javaObjects.put("bar", "baz");
+        javaObjects.put("qux", null);
+        assertFalse(jsonObject.equals(javaObjects));
+        assertFalse(javaObjects.equals(jsonObject));
+
+        // An object which is not a Map is not equal.
+        final ArrayList<Map.Entry<String, JsonValue>> entries = new ArrayList<>(linkedHashMap.entrySet());
+        assertFalse(jsonObject.equals(entries));
+        assertFalse(entries.equals(jsonObject));
+    }
+
 }
