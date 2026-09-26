@@ -835,5 +835,4 @@ public class TestJsonObject {
         assertFalse(jsonObject.equals(entries));
         assertFalse(entries.equals(jsonObject));
     }
-
 }

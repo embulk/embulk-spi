@@ -425,5 +425,4 @@ public class TestJsonArray {
         assertTrue(list.equals(jsonArray));
         assertEquals(list.hashCode(), jsonArray.hashCode());
     }
-
 }

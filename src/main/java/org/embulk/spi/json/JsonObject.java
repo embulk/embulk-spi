@@ -978,12 +978,14 @@ public final class JsonObject extends AbstractMap<String, JsonValue> implements 
      * of the key-value pairs does not impact the equality.
      *
      * <p>Also note that it does not return {@code true} for a {@link java.util.Map} that contains a Java object that is not
-     * a {@link JsonValue}. For example, a {@link java.util.Map} that contains a Java {@link java.lang.String} instead of a
-     * {@link JsonString} as a value is never equal to {@link JsonObject} as {@link JsonString} is never equal to
-     * {@link java.lang.String}.
+     * a {@link JsonValue} in place of a JSON {@code null}, boolean, number, or string. For example, a {@link java.util.Map} that
+     * contains a Java {@link java.lang.String} instead of a {@link JsonString} is never equal to {@link JsonObject} as
+     * {@link JsonString} is never equal to {@link java.lang.String}. On the other hand, a nested {@link java.util.List} or
+     * {@link java.util.Map} can be equal to a nested {@link JsonArray} or {@link JsonObject} by the same rule.
      *
-     * <p>It returned {@code true} only for {@link JsonObject} until the Embulk SPI v0.11. However, that {@code equals} behavior
-     * violated the symmetry required by its contract. It has changed since the Embulk SPI v0.12.
+     * <p>It returned {@code true} only for {@link JsonObject} in the Embulk SPI v0.11 and earlier.
+     * However, that {@code equals} behavior violated the symmetry required by its contract.
+     * It has changed since the Embulk SPI v0.12.
      *
      * @return {@code true} if the specified object is equal to this JSON object
      *
