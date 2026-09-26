@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
 import org.msgpack.value.MapValue;
 import org.msgpack.value.StringValue;
@@ -969,10 +968,28 @@ public final class JsonObject extends AbstractMap<String, JsonValue> implements 
     /**
      * Compares the specified object with this JSON object for equality.
      *
-     * <p>Note that it can return {@code true} only when {@link JsonObject} is given. It checks the equality as a JSON object.
-     * It does not return {@code true} for a general {@link java.util.Map} even though the given map contains the same mapping.
+     * <p>It returns {@code true} if and only if the specified object is also a {@link java.util.Map}, and the two maps represent
+     * the same mappings.
+     *
+     * <p>Note that it can return {@code true} not only for {@link JsonObject}, but also for a general {@link java.util.Map},
+     * such as {@link java.util.HashMap}, when the given map contains the same {@link String} keys mapped to equal
+     * {@link JsonValue} values. It follows the general contract of {@link java.util.Map#equals(Object)} as {@link JsonObject} is
+     * a {@link java.util.Map}, so that the equality is symmetric with any other {@link java.util.Map} implementation. The order
+     * of the key-value pairs does not impact the equality.
+     *
+     * <p>Also note that it does not return {@code true} for a {@link java.util.Map} that contains a Java object that is not
+     * a {@link JsonValue} in place of a JSON {@code null}, boolean, number, or string. For example, a {@link java.util.Map} that
+     * contains a Java {@link java.lang.String} instead of a {@link JsonString} is never equal to {@link JsonObject} as
+     * {@link JsonString} is never equal to {@link java.lang.String}. On the other hand, a nested {@link java.util.List} or
+     * {@link java.util.Map} can be equal to a nested {@link JsonArray} or {@link JsonObject} by the same rule.
+     *
+     * <p>It returned {@code true} only for {@link JsonObject} in the Embulk SPI v0.11 and earlier.
+     * However, that {@code equals} behavior violated the symmetry required by its contract.
+     * It has changed since the Embulk SPI v0.12.
      *
      * @return {@code true} if the specified object is equal to this JSON object
+     *
+     * @see java.util.Map#equals(Object)
      *
      * @since 0.10.42
      */
@@ -982,22 +999,20 @@ public final class JsonObject extends AbstractMap<String, JsonValue> implements 
             return true;
         }
 
-        // Check by `instanceof` in case against unexpected arbitrary extension of JsonValue.
-        if (!(otherObject instanceof JsonObject)) {
-            return false;
-        }
-
-        final JsonObject other = (JsonObject) otherObject;
-
-        // The equality of JsonObject should be checked like a Map, not by the internal key-value array.
-        // For example, the order of the internal key-value array should not impact the equality of JsonObject.
-        return Objects.equals(this.entrySet(), other.entrySet());
+        // Follow the general contract of Map#equals so that the equality is symmetric with other Map implementations.
+        // The equality is checked as a Map, not by the internal key-value arrays. The order of the internal key-value arrays
+        // does not impact the equality.
+        return super.equals(otherObject);
     }
 
     /**
      * Returns the hash code value for this JSON object.
      *
+     * <p>The hash code is calculated as defined in {@link java.util.Map#hashCode()} to be consistent with {@link #equals(Object)}.
+     *
      * @return the hash code value for this JSON object
+     *
+     * @see java.util.Map#hashCode()
      *
      * @since 0.10.42
      */
