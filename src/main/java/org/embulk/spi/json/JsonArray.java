@@ -304,7 +304,7 @@ public final class JsonArray extends AbstractList<JsonValue> implements JsonValu
      * {@link JsonString} is never equal to {@link java.lang.String}. On the other hand, a nested {@link java.util.List} or
      * {@link java.util.Map} can be equal to a nested {@link JsonArray} or {@link JsonObject} by the same rule.
      *
-     * <p>It returned {@code true} only for {@link JsonObject} in the Embulk SPI v0.11 and earlier.
+     * <p>It returned {@code true} only for {@link JsonArray} in the Embulk SPI v0.11 and earlier.
      * However, that {@code equals} behavior violated the symmetry required by its contract.
      * It has changed since the Embulk SPI v0.12.
      *
