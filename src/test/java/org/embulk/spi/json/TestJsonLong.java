@@ -19,6 +19,7 @@ package org.embulk.spi.json;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,6 +27,7 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import org.junit.jupiter.api.Test;
+import org.msgpack.value.Value;
 import org.msgpack.value.ValueFactory;
 
 public class TestJsonLong {
@@ -293,5 +295,52 @@ public class TestJsonLong {
         assertEquals(JsonLong.of(Long.MAX_VALUE), JsonValue.fromMsgpack(ValueFactory.newInteger(Long.MAX_VALUE)));
         assertEquals(JsonLong.of(Long.MAX_VALUE), JsonValue.fromMsgpack(ValueFactory.newInteger(BigInteger.valueOf(Long.MAX_VALUE))));
         assertThrows(IllegalArgumentException.class, () -> JsonValue.fromMsgpack(ValueFactory.newInteger(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE))));
+    }
+
+    @Test
+    public void testToMsgpack() {
+        final JsonLong integer = JsonLong.of(42L);
+        assertEquals(ValueFactory.newInteger(42L), integer.toMsgpack());
+        assertSame(integer.toMsgpack(), integer.toMsgpack());
+
+        // JsonLong#toMsgpack returns the same MessagePack value as-is that is given to JsonValue#fromMsgpack.
+        final Value msgpackInteger = ValueFactory.newInteger(42L);
+        assertSame(msgpackInteger, JsonValue.fromMsgpack(msgpackInteger).toMsgpack());
+
+        final Value msgpackBigInteger = ValueFactory.newInteger(BigInteger.valueOf(Long.MAX_VALUE));
+        final JsonValue fromBigInteger = JsonValue.fromMsgpack(msgpackBigInteger);
+        assertEquals(ValueFactory.newInteger(Long.MAX_VALUE), fromBigInteger.toMsgpack());
+        assertSame(fromBigInteger.toMsgpack(), fromBigInteger.toMsgpack());
+    }
+
+    @Test
+    public void testHashCode() {
+        // JsonLong#hashCode has returned the same hash code as the corresponding MessagePack's Integer value.
+        // Note that it is different from Long#hashCode for negative integers in the range of int.
+        assertEquals(0, JsonLong.of(0L).hashCode());
+        assertEquals(42, JsonLong.of(42L).hashCode());
+        assertEquals(-1, JsonLong.of(-1L).hashCode());
+        assertNotEquals(Long.hashCode(-1L), JsonLong.of(-1L).hashCode());
+
+        final long[] values = {
+            0L,
+            1L,
+            -1L,
+            42L,
+            (long) Integer.MAX_VALUE,
+            (long) Integer.MIN_VALUE,
+            ((long) Integer.MAX_VALUE) + 1L,
+            ((long) Integer.MIN_VALUE) - 1L,
+            1234567890123456L,
+            -1234567890123456L,
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+        };
+        for (final long value : values) {
+            assertEquals(ValueFactory.newInteger(value).hashCode(), JsonLong.of(value).hashCode());
+            assertEquals(
+                    ValueFactory.newInteger(value).hashCode(),
+                    JsonValue.fromMsgpack(ValueFactory.newInteger(value)).hashCode());
+        }
     }
 }

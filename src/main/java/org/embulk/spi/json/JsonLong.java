@@ -34,13 +34,15 @@ import org.msgpack.value.impl.ImmutableLongValueImpl;
 public final class JsonLong implements JsonNumber {
     private JsonLong(final long value, final String literal) {
         // No direct instantiation.
-        this.value = new ImmutableLongValueImpl(value);
+        this.value = value;
         this.literal = literal;
+        this.msgpackLongCache = null;
     }
 
     private JsonLong(final ImmutableLongValueImpl msgpackValue) {
-        this.value = msgpackValue;
+        this.value = msgpackValue.toLong();
         this.literal = null;
+        this.msgpackLongCache = msgpackValue;
     }
 
     static JsonLong fromMsgpack(final IntegerValue msgpackValue) {
@@ -156,7 +158,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public boolean isByteValue() {
-        return this.value.isInByteRange();
+        return ((long) Byte.MIN_VALUE) <= this.value && this.value <= ((long) Byte.MAX_VALUE);
     }
 
     /**
@@ -168,7 +170,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public boolean isShortValue() {
-        return this.value.isInShortRange();
+        return ((long) Short.MIN_VALUE) <= this.value && this.value <= ((long) Short.MAX_VALUE);
     }
 
     /**
@@ -180,7 +182,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public boolean isIntValue() {
-        return this.value.isInIntRange();
+        return ((long) Integer.MIN_VALUE) <= this.value && this.value <= ((long) Integer.MAX_VALUE);
     }
 
     /**
@@ -210,7 +212,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public byte byteValue() {
-        return this.value.toByte();
+        return (byte) this.value;
     }
 
     /**
@@ -228,7 +230,7 @@ public final class JsonLong implements JsonNumber {
         if (!this.isByteValue()) {
             throw new ArithmeticException("Out of the range of byte: " + this.value);
         }
-        return this.value.toByte();
+        return (byte) this.value;
     }
 
     /**
@@ -246,7 +248,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public short shortValue() {
-        return this.value.toShort();
+        return (short) this.value;
     }
 
     /**
@@ -264,7 +266,7 @@ public final class JsonLong implements JsonNumber {
         if (!this.isShortValue()) {
             throw new ArithmeticException("Out of the range of short: " + this.value);
         }
-        return this.value.toShort();
+        return (short) this.value;
     }
 
     /**
@@ -282,7 +284,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public int intValue() {
-        return this.value.toInt();
+        return (int) this.value;
     }
 
     /**
@@ -300,7 +302,7 @@ public final class JsonLong implements JsonNumber {
         if (!this.isIntValue()) {
             throw new ArithmeticException("Out of the range of int: " + this.value);
         }
-        return this.value.toInt();
+        return (int) this.value;
     }
 
     /**
@@ -312,7 +314,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public long longValue() {
-        return this.value.toLong();
+        return this.value;
     }
 
     /**
@@ -324,7 +326,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public long longValueExact() {
-        return this.value.toLong();
+        return this.value;
     }
 
     /**
@@ -336,7 +338,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public BigInteger bigIntegerValue() {
-        return this.value.toBigInteger();
+        return BigInteger.valueOf(this.value);
     }
 
     /**
@@ -348,7 +350,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public BigInteger bigIntegerValueExact() {
-        return this.value.toBigInteger();
+        return BigInteger.valueOf(this.value);
     }
 
     /**
@@ -365,7 +367,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public float floatValue() {
-        return this.value.toFloat();
+        return (float) this.value;
     }
 
     /**
@@ -382,7 +384,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public double doubleValue() {
-        return this.value.toDouble();
+        return (double) this.value;
     }
 
     /**
@@ -394,7 +396,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public BigDecimal bigDecimalValue() {
-        return BigDecimal.valueOf(this.value.toLong());
+        return BigDecimal.valueOf(this.value);
     }
 
     /**
@@ -411,7 +413,7 @@ public final class JsonLong implements JsonNumber {
         if (this.literal != null) {
             return this.literal;
         }
-        return Long.toString(this.value.toLong());
+        return Long.toString(this.value);
     }
 
     /**
@@ -430,7 +432,12 @@ public final class JsonLong implements JsonNumber {
     @Deprecated
     @Override
     public Value toMsgpack() {
-        return this.value;
+        if (this.msgpackLongCache != null) {
+            return this.msgpackLongCache;
+        }
+
+        this.msgpackLongCache = new ImmutableLongValueImpl(this.value);
+        return this.msgpackLongCache;
     }
 
     /**
@@ -442,7 +449,7 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public String toString() {
-        return Long.toString(this.value.toLong());
+        return Long.toString(this.value);
     }
 
     /**
@@ -461,12 +468,12 @@ public final class JsonLong implements JsonNumber {
         // Check by `instanceof` in case against unexpected arbitrary extension of JsonValue.
         if (otherObject instanceof JsonLong) {
             final JsonLong other = (JsonLong) otherObject;
-            return this.value.equals(other.value);
+            return this.value == other.value;
         }
 
         if (otherObject instanceof JsonDouble) {
             final JsonDouble other = (JsonDouble) otherObject;
-            return other.isLongValue() && this.value.toLong() == other.longValue();
+            return other.isLongValue() && this.value == other.longValue();
         }
 
         return false;
@@ -481,10 +488,16 @@ public final class JsonLong implements JsonNumber {
      */
     @Override
     public int hashCode() {
-        return this.value.hashCode();
+        // It is the same as the hash code of MessagePack's Integer value, which is different from Long#hashCode.
+        if (((long) Integer.MIN_VALUE) <= this.value && this.value <= ((long) Integer.MAX_VALUE)) {
+            return (int) this.value;
+        }
+        return (int) (this.value ^ (this.value >>> 32));
     }
 
-    private final ImmutableLongValueImpl value;
+    private final long value;
 
     private final String literal;
+
+    private ImmutableLongValueImpl msgpackLongCache;
 }
