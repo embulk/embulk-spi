@@ -23,7 +23,8 @@ import org.msgpack.value.impl.ImmutableDoubleValueImpl;
 
 public final class FakeJsonDouble implements JsonValue {
     private FakeJsonDouble(final double value) {
-        this.value = new ImmutableDoubleValueImpl(value);
+        this.value = value;
+        this.msgpackDoubleCache = null;
     }
 
     public static FakeJsonDouble of(final double value) {
@@ -41,103 +42,107 @@ public final class FakeJsonDouble implements JsonValue {
     }
 
     public boolean isIntegral() {
-        final double inner = this.value.toDouble();
-        return inner == Math.rint(inner);
+        return !Double.isInfinite(this.value) && this.value == Math.rint(this.value);
     }
 
     public boolean isByteValue() {
-        return this.isIntegral() && ((double) Byte.MIN_VALUE) <= this.value.toDouble() && this.value.toDouble() <= ((double) Byte.MAX_VALUE);
+        return this.isIntegral() && ((double) Byte.MIN_VALUE) <= this.value && this.value <= ((double) Byte.MAX_VALUE);
     }
 
     public boolean isShortValue() {
-        return this.isIntegral() && ((double) Short.MIN_VALUE) <= this.value.toDouble() && this.value.toDouble() <= ((double) Short.MAX_VALUE);
+        return this.isIntegral() && ((double) Short.MIN_VALUE) <= this.value && this.value <= ((double) Short.MAX_VALUE);
     }
 
     public boolean isIntValue() {
-        return this.isIntegral() && ((double) Integer.MIN_VALUE) <= this.value.toDouble() && this.value.toDouble() <= ((double) Integer.MAX_VALUE);
+        return this.isIntegral() && ((double) Integer.MIN_VALUE) <= this.value && this.value <= ((double) Integer.MAX_VALUE);
     }
 
     public boolean isLongValue() {
-        return this.isIntegral() && ((double) Long.MIN_VALUE) <= this.value.toDouble() && this.value.toDouble() <= ((double) Long.MAX_VALUE);
+        return this.isIntegral() && -0x1p63 <= this.value && this.value < 0x1p63;
     }
 
     public byte byteValue() {
-        return this.value.toByte();
+        return (byte) this.value;
     }
 
     public byte byteValueExact() {
         if (!this.isByteValue()) {
             throw new ArithmeticException("Out of the range of byte, or not integral: " + this.value);
         }
-        return this.value.toByte();
+        return (byte) this.value;
     }
 
     public short shortValue() {
-        return this.value.toShort();
+        return (short) this.value;
     }
 
     public short shortValueExact() {
         if (!this.isShortValue()) {
             throw new ArithmeticException("Out of the range of short, or not integral: " + this.value);
         }
-        return this.value.toShort();
+        return (short) this.value;
     }
 
     public int intValue() {
-        return this.value.toInt();
+        return (int) this.value;
     }
 
     public int intValueExact() {
         if (!this.isIntValue()) {
             throw new ArithmeticException("Out of the range of int, or not integral: " + this.value);
         }
-        return this.value.toInt();
+        return (int) this.value;
     }
 
     public long longValue() {
-        return this.value.toLong();
+        return (long) this.value;
     }
 
     public long longValueExact() {
         if (!this.isLongValue()) {
             throw new ArithmeticException("Out of the range of long, or not integral: " + this.value);
         }
-        return this.value.toLong();
+        return (long) this.value;
     }
 
     public BigInteger bigIntegerValue() {
-        return BigDecimal.valueOf(this.value.toDouble()).toBigInteger();
+        return this.bigDecimalValueInternal().toBigInteger();
     }
 
     public BigInteger bigIntegerValueExact() {
-        return BigDecimal.valueOf(this.value.toDouble()).toBigIntegerExact();
+        return this.bigDecimalValueInternal().toBigIntegerExact();
     }
 
     public float floatValue() {
-        return this.value.toFloat();
+        return (float) this.value;
     }
 
     public double doubleValue() {
-        return this.value.toDouble();
+        return this.value;
     }
 
     public BigDecimal bigDecimalValue() {
-        return BigDecimal.valueOf(this.value.toDouble());
+        return this.bigDecimalValueInternal();
     }
 
     @Override
     public String toJson() {
-        return Double.toString(this.value.toDouble());
+        return Double.toString(this.value);
     }
 
     @Deprecated
     public Value toMsgpack() {
-        return this.value;
+        if (this.msgpackDoubleCache != null) {
+            return this.msgpackDoubleCache;
+        }
+
+        this.msgpackDoubleCache = new ImmutableDoubleValueImpl(this.value);
+        return this.msgpackDoubleCache;
     }
 
     @Override
     public String toString() {
-        return Double.toString(this.value.toDouble());
+        return Double.toString(this.value);
     }
 
     @Override
@@ -149,13 +154,13 @@ public final class FakeJsonDouble implements JsonValue {
         // Check by `instanceof` in case against unexpected arbitrary extension of JsonValue.
         if (otherObject instanceof FakeJsonDouble) {
             final FakeJsonDouble other = (FakeJsonDouble) otherObject;
-            return this.value.equals(other.value);
+            return Double.doubleToLongBits(this.value) == Double.doubleToLongBits(other.value);
         }
 
         // Fake!
         if (otherObject instanceof JsonDouble) {
             final JsonDouble other = (JsonDouble) otherObject;
-            return this.doubleValue() == other.doubleValue();
+            return Double.doubleToLongBits(this.doubleValue()) == Double.doubleToLongBits(other.doubleValue());
         }
 
         return false;
@@ -163,8 +168,17 @@ public final class FakeJsonDouble implements JsonValue {
 
     @Override
     public int hashCode() {
-        return this.value.hashCode();
+        return Double.hashCode(this.value);
     }
 
-    private final ImmutableDoubleValueImpl value;
+    private BigDecimal bigDecimalValueInternal() {
+        if (Double.isNaN(this.value) || Double.isInfinite(this.value)) {
+            throw new ArithmeticException("Not a finite number: " + this.value);
+        }
+        return BigDecimal.valueOf(this.value);
+    }
+
+    private final double value;
+
+    private ImmutableDoubleValueImpl msgpackDoubleCache;
 }
