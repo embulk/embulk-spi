@@ -407,8 +407,16 @@ public interface JsonValue {
      * {@link JsonDouble#equals(Object)} when both have the positive infinity, or when both have the negative infinity.
      * A combination of the positive infinity and the negative infinity is considered not to be equal.
      *
+     * <p>It throws {@link org.msgpack.core.MessageStringCodingException} when the specified MessagePack's value has
+     * a MessagePack's String value that is not valid as UTF-8, since the Embulk SPI v0.12.
+     *
+     * <p>Note that it did not throw {@link org.msgpack.core.MessageStringCodingException} for such a MessagePack's String value
+     * in the Embulk SPI v0.11 and earlier. Instead, methods of the created {@link JsonString} instance threw it afterwards,
+     * such as {@link JsonString#getString()} and {@link JsonString#toJson()}.
+     *
      * @param msgpackValue  the MessagePack's value
      * @return the new JSON value
+     * @throws org.msgpack.core.MessageStringCodingException  if the MessagePack's value has a String value that is not valid as UTF-8
      *
      * @see <a href="https://github.com/embulk/embulk/pull/1538">Draft EEP: JSON Column Type</a>
      *
