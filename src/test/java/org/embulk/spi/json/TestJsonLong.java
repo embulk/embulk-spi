@@ -347,4 +347,45 @@ public class TestJsonLong {
             assertEquals(Long.hashCode(value), JsonValue.fromMsgpack(ValueFactory.newInteger(value)).hashCode());
         }
     }
+
+    @Test
+    public void testEqualsAndHashCode() {
+        final long[] values = {
+            0L,
+            1L,
+            -1L,
+            42L,
+            -42L,
+            (long) Integer.MAX_VALUE,
+            (long) Integer.MIN_VALUE,
+            ((long) Integer.MAX_VALUE) + 1L,
+            ((long) Integer.MIN_VALUE) - 1L,
+            1234567890123456L,
+            -1234567890123456L,
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+        };
+        for (final long left : values) {
+            for (final long right : values) {
+                final JsonLong jsonLeft = JsonLong.of(left);
+
+                // It does not matter how they are created.
+                final JsonValue[] jsonRights = {
+                    JsonLong.of(right),
+                    JsonLong.withLiteral(right, "literal"),
+                    JsonValue.fromMsgpack(ValueFactory.newInteger(right)),
+                };
+                for (final JsonValue jsonRight : jsonRights) {
+                    // JsonLong#equals is in the same manner as Long#equals.
+                    assertEquals(Long.valueOf(left).equals(Long.valueOf(right)), jsonLeft.equals(jsonRight));
+                    assertEquals(Long.valueOf(right).equals(Long.valueOf(left)), jsonRight.equals(jsonLeft));
+
+                    // Equal instances must have the same hash code.
+                    if (jsonLeft.equals(jsonRight)) {
+                        assertEquals(jsonLeft.hashCode(), jsonRight.hashCode());
+                    }
+                }
+            }
+        }
+    }
 }
