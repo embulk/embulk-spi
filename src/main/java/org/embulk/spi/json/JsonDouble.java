@@ -36,6 +36,11 @@ import org.msgpack.value.impl.ImmutableDoubleValueImpl;
  * {@link JsonDouble} is designed to work consistently even with {@code NaN} and the infinity for such an instance,
  * and for the future possibility to accept {@code NaN} and the infinity.
  *
+ * <p>Note that a {@link JsonDouble} instance cannot represent every integral number whose absolute value is greater than
+ * 2<sup>53</sup>. For such a large number, {@link #longValue()}, {@link #bigIntegerValue()}, {@link #bigDecimalValue()},
+ * and their {@code Exact} variants may return numbers that are different from each other in their less significant digits,
+ * while they are the same in the precision of {@code double}.
+ *
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc8259">RFC 8259 - The JavaScript Object Notation (JSON) Data Interchange Format</a>
  *
  * @since 0.10.42
