@@ -455,6 +455,11 @@ public final class JsonLong implements JsonNumber {
     /**
      * Compares the specified object with this JSON integral number for equality.
      *
+     * <p>A {@link JsonLong} instance and a {@link JsonDouble} instance are NOT considered to be equal by {@link #equals(Object)}
+     * since the Embulk SPI v0.12, even if they represent the same integral number, such as {@code 1} and {@code 1.0}.
+     *
+     * <p>Such instances that represent the same integral number were considered to be equal in the Embulk SPI v0.11 and earlier.
+     *
      * @return {@code true} if the specified object is equal to this JSON integral number
      *
      * @since 0.10.42
@@ -471,11 +476,7 @@ public final class JsonLong implements JsonNumber {
             return this.value == other.value;
         }
 
-        if (otherObject instanceof JsonDouble) {
-            final JsonDouble other = (JsonDouble) otherObject;
-            return other.isLongValue() && this.value == other.longValue();
-        }
-
+        // JsonLong is never equal to JsonDouble even if they represent the same integral number.
         return false;
     }
 

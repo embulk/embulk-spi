@@ -194,8 +194,8 @@ public class TestJsonDouble {
         assertEquals(JsonDouble.of(-0.0), jsonDouble);
         assertNotEquals(JsonDouble.of(0.000001), jsonDouble);
         assertNotEquals(JsonDouble.of(-0.000001), jsonDouble);
-        assertEquals(JsonLong.of(0L), jsonDouble);
-        assertEquals(JsonLong.of(-0L), jsonDouble);
+        assertNotEquals(JsonLong.of(0L), jsonDouble);
+        assertNotEquals(JsonLong.of(-0L), jsonDouble);
         assertNotEquals(JsonLong.of(1L), jsonDouble);
         assertNotEquals(JsonLong.of(-1L), jsonDouble);
 
@@ -254,8 +254,8 @@ public class TestJsonDouble {
         assertEquals(JsonDouble.of(-0.0), jsonDouble);
         assertNotEquals(JsonDouble.of(0.000001), jsonDouble);
         assertNotEquals(JsonDouble.of(-0.000001), jsonDouble);
-        assertEquals(JsonLong.of(0L), jsonDouble);
-        assertEquals(JsonLong.of(-0L), jsonDouble);
+        assertNotEquals(JsonLong.of(0L), jsonDouble);
+        assertNotEquals(JsonLong.of(-0L), jsonDouble);
         assertNotEquals(JsonLong.of(1L), jsonDouble);
         assertNotEquals(JsonLong.of(-1L), jsonDouble);
 
@@ -311,7 +311,7 @@ public class TestJsonDouble {
         assertEquals(JsonDouble.of(1.0), jsonDouble);
         assertNotEquals(JsonDouble.of(0.0), jsonDouble);
         assertNotEquals(JsonDouble.of(1.0000001), jsonDouble);
-        assertEquals(JsonLong.of(1L), jsonDouble);
+        assertNotEquals(JsonLong.of(1L), jsonDouble);
         assertNotEquals(JsonLong.of(0L), jsonDouble);
 
         assertEquals(ValueFactory.newFloat(1.0), jsonDouble.toMsgpack());
@@ -366,7 +366,7 @@ public class TestJsonDouble {
         assertEquals(JsonDouble.of(-1.0), jsonDouble);
         assertNotEquals(JsonDouble.of(0.0), jsonDouble);
         assertNotEquals(JsonDouble.of(-0.999999), jsonDouble);
-        assertEquals(JsonLong.of(-1L), jsonDouble);
+        assertNotEquals(JsonLong.of(-1L), jsonDouble);
         assertNotEquals(JsonLong.of(0L), jsonDouble);
         assertNotEquals(JsonLong.of(1L), jsonDouble);
 
@@ -523,7 +523,7 @@ public class TestJsonDouble {
         assertEquals("19245.0", jsonDouble.toString());
         assertEquals(JsonDouble.of(19245.0), jsonDouble);
         assertNotEquals(JsonDouble.of(19245.000001), jsonDouble);
-        assertEquals(JsonLong.of(19245L), jsonDouble);
+        assertNotEquals(JsonLong.of(19245L), jsonDouble);
         assertNotEquals(JsonLong.of(19246L), jsonDouble);
 
         assertEquals(ValueFactory.newFloat(19245.0), jsonDouble.toMsgpack());
@@ -624,7 +624,7 @@ public class TestJsonDouble {
         assertEquals("9351902.0", jsonDouble.toString());
         assertEquals(JsonDouble.of(9351902.0), jsonDouble);
         assertNotEquals(JsonDouble.of(9351902.001), jsonDouble);
-        assertEquals(JsonLong.of(9351902L), jsonDouble);
+        assertNotEquals(JsonLong.of(9351902L), jsonDouble);
         assertNotEquals(JsonLong.of(9351903L), jsonDouble);
 
         assertEquals(ValueFactory.newFloat(9351902.0), jsonDouble.toMsgpack());
@@ -726,7 +726,7 @@ public class TestJsonDouble {
         assertEquals("3.123456789E10", jsonDouble.toString());
         assertEquals(JsonDouble.of(31234567890.0), jsonDouble);
         assertNotEquals(JsonDouble.of(31234567890.1), jsonDouble);
-        assertEquals(JsonLong.of(31234567890L), jsonDouble);
+        assertNotEquals(JsonLong.of(31234567890L), jsonDouble);
         assertNotEquals(JsonLong.of(31234567891L), jsonDouble);
 
         assertEquals(ValueFactory.newFloat(31234567890.0), jsonDouble.toMsgpack());
@@ -975,6 +975,48 @@ public class TestJsonDouble {
     }
 
     @Test
+    public void testEqualityWithJsonLong() {
+        // JsonDouble and JsonLong are never equal even if they represent the same integral number.
+        // Note that they were equal in the Embulk SPI v0.11 and earlier when they represented the same integral number.
+        final JsonDouble jsonDouble = JsonDouble.of(1.0);
+        final JsonLong jsonLong = JsonLong.of(1L);
+        assertFalse(jsonDouble.equals(jsonLong));
+        assertFalse(jsonLong.equals(jsonDouble));
+
+        // They can be compared as numbers by JsonNumber#longValue or JsonNumber#doubleValue.
+        assertTrue(jsonDouble.isLongValue());
+        assertEquals(jsonLong.longValue(), jsonDouble.longValue());
+        assertEquals(jsonLong.doubleValue(), jsonDouble.doubleValue());
+
+        assertFalse(JsonDouble.of(0.0).equals(JsonLong.of(0L)));
+        assertFalse(JsonLong.of(0L).equals(JsonDouble.of(0.0)));
+        assertFalse(JsonDouble.of(-0.0).equals(JsonLong.of(0L)));
+        assertFalse(JsonLong.of(0L).equals(JsonDouble.of(-0.0)));
+        assertFalse(JsonDouble.of(-1.0).equals(JsonLong.of(-1L)));
+        assertFalse(JsonLong.of(-1L).equals(JsonDouble.of(-1.0)));
+        assertFalse(JsonDouble.of(1234567890123456.0).equals(JsonLong.of(1234567890123456L)));
+        assertFalse(JsonLong.of(1234567890123456L).equals(JsonDouble.of(1234567890123456.0)));
+
+        // Literals do not matter.
+        assertFalse(JsonDouble.withLiteral(1.0, "1").equals(JsonLong.withLiteral(1L, "1.0")));
+        assertFalse(JsonLong.withLiteral(1L, "1.0").equals(JsonDouble.withLiteral(1.0, "1")));
+
+        // JsonArray and JsonObject are not equal when they contain JsonDouble and JsonLong at the same place.
+        assertFalse(JsonArray.of(jsonDouble).equals(JsonArray.of(jsonLong)));
+        assertFalse(JsonArray.of(jsonLong).equals(JsonArray.of(jsonDouble)));
+        assertFalse(JsonObject.of("key", jsonDouble).equals(JsonObject.of("key", jsonLong)));
+        assertFalse(JsonObject.of("key", jsonLong).equals(JsonObject.of("key", jsonDouble)));
+
+        // It applies to nested JsonArray and JsonObject.
+        final JsonArray nestedWithDouble = JsonArray.of(JsonString.of("foo"), JsonArray.of(JsonObject.of("key", jsonDouble)));
+        final JsonArray nestedWithLong = JsonArray.of(JsonString.of("foo"), JsonArray.of(JsonObject.of("key", jsonLong)));
+        assertFalse(nestedWithDouble.equals(nestedWithLong));
+        assertFalse(nestedWithLong.equals(nestedWithDouble));
+        assertTrue(nestedWithDouble.equals(JsonArray.of(JsonString.of("foo"), JsonArray.of(JsonObject.of("key", JsonDouble.of(1.0))))));
+        assertTrue(nestedWithLong.equals(JsonArray.of(JsonString.of("foo"), JsonArray.of(JsonObject.of("key", JsonLong.of(1L))))));
+    }
+
+    @Test
     public void testFromMsgpack() {
         assertEquals(JsonDouble.of(0.0), JsonValue.fromMsgpack(ValueFactory.newFloat(0.0)));
         assertEquals(JsonDouble.of(-0.0), JsonValue.fromMsgpack(ValueFactory.newFloat(-0.0)));
@@ -1116,7 +1158,8 @@ public class TestJsonDouble {
         assertFalse(negativeInfinity.equals(infinity));
         assertFalse(infinity.equals(negativeInfinity));
 
-        // The negative infinity is not equal to Long.MIN_VALUE although JsonDouble#longValue returns Long.MIN_VALUE for it.
+        // The negative infinity is not equal to JsonLong of Long.MIN_VALUE, as JsonDouble is never equal to JsonLong.
+        // Note that JsonDouble#longValue returns Long.MIN_VALUE for the negative infinity.
         assertFalse(negativeInfinity.equals(JsonLong.of(Long.MIN_VALUE)));
         assertFalse(JsonLong.of(Long.MIN_VALUE).equals(negativeInfinity));
     }

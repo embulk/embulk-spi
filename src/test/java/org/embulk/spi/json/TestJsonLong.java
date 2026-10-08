@@ -78,7 +78,7 @@ public class TestJsonLong {
         assertEquals("123", integer.toString());
         assertEquals(JsonLong.of(123L), integer);
         assertNotEquals(JsonLong.of(122L), integer);
-        assertEquals(JsonDouble.of(123.0), integer);
+        assertNotEquals(JsonDouble.of(123.0), integer);
         assertNotEquals(JsonDouble.of(123.00000001), integer);
 
         assertEquals(ValueFactory.newInteger(123L), integer.toMsgpack());
@@ -128,7 +128,7 @@ public class TestJsonLong {
         assertEquals("12345", integer.toString());
         assertEquals(JsonLong.of(12345L), integer);
         assertNotEquals(JsonLong.of(12346L), integer);
-        assertEquals(JsonDouble.of(12345.0), integer);
+        assertNotEquals(JsonDouble.of(12345.0), integer);
         assertNotEquals(JsonDouble.of(12345.00000001), integer);
 
         assertEquals(ValueFactory.newInteger(12345L), integer.toMsgpack());
@@ -178,7 +178,7 @@ public class TestJsonLong {
         assertEquals("1234567890", integer.toString());
         assertEquals(JsonLong.of(1234567890L), integer);
         assertNotEquals(JsonLong.of(1234567891L), integer);
-        assertEquals(JsonDouble.of(1234567890.0), integer);
+        assertNotEquals(JsonDouble.of(1234567890.0), integer);
         assertNotEquals(JsonDouble.of(1234567890.00001), integer);
 
         assertEquals(ValueFactory.newInteger(1234567890L), integer.toMsgpack());
@@ -228,7 +228,7 @@ public class TestJsonLong {
         assertEquals("1234567890123456", integer.toString());
         assertEquals(JsonLong.of(1234567890123456L), integer);
         assertNotEquals(JsonLong.of(1234567890123457L), integer);
-        assertEquals(JsonDouble.of(1234567890123456.0), integer);
+        assertNotEquals(JsonDouble.of(1234567890123456.0), integer);
         assertNotEquals(JsonDouble.of(1234567890123457.0), integer);
 
         assertEquals(ValueFactory.newInteger(1234567890123456L), integer.toMsgpack());
@@ -278,7 +278,7 @@ public class TestJsonLong {
         assertEquals("1234567890123456", integer.toString());
         assertEquals(JsonLong.of(1234567890123456L), integer);
         assertNotEquals(JsonLong.of(1234567890123457L), integer);
-        assertEquals(JsonDouble.of(1234567890123456.0), integer);
+        assertNotEquals(JsonDouble.of(1234567890123456.0), integer);
         assertNotEquals(JsonDouble.of(1234567890123457.0), integer);
 
         assertEquals(ValueFactory.newInteger(1234567890123456L), integer.toMsgpack());

@@ -154,11 +154,6 @@ public final class FakeJsonLong implements JsonValue {
             return this.longValue() == other.longValue();
         }
 
-        if (otherObject instanceof JsonDouble) {
-            final JsonDouble other = (JsonDouble) otherObject;
-            return other.isLongValue() && this.value.toLong() == other.longValue();
-        }
-
         return false;
     }
 
