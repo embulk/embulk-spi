@@ -27,6 +27,15 @@ import org.msgpack.value.impl.ImmutableDoubleValueImpl;
  *
  * <p>It does not accept {@code NaN} (Not-a-Number) and the infinity.
  *
+ * <p>However, a {@link JsonDouble} instance can have {@code NaN} or the infinity when it is created through
+ * {@link JsonValue#fromMsgpack(Value)} from MessagePack's Float value that has {@code NaN} or the infinity.
+ * Note that {@link #toJson()} and {@link #toString ()} may not return a valid JSON representation for
+ * a {@link JsonDouble} instance that has {@code NaN} or the infinity.
+ *
+ * <p>{@link #of(double)} and {@link #withLiteral(double, String)} still never accept {@code NaN} and the infinity.
+ * {@link JsonDouble} is designed to work consistently even with {@code NaN} and the infinity for such an instance,
+ * and for the future possibility to accept {@code NaN} and the infinity.
+ *
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc8259">RFC 8259 - The JavaScript Object Notation (JSON) Data Interchange Format</a>
  *
  * @since 0.10.42
@@ -45,6 +54,8 @@ public final class JsonDouble implements JsonNumber {
     }
 
     private JsonDouble(final ImmutableDoubleValueImpl msgpackValue) {
+        // This constructor is internal only for JsonValue#fromMsgpack. It accepts NaN and the infinity as-is,
+        // while the constructor above for #of and #withLiteral never accepts NaN and the infinity.
         this.value = msgpackValue.toDouble();
         this.literal = null;
         this.msgpackDoubleCache = msgpackValue;
@@ -139,16 +150,24 @@ public final class JsonDouble implements JsonNumber {
      * <p>Note that it does not guarantee this JSON number can be represented as a Java primitive exact {@code long}.
      * This JSON number can be out of the range of the Java primitive {@code long}.
      *
+     * <p>It returns {@code false} for a {@link JsonDouble} instance that has {@code NaN} or the infinity, which can
+     * happen when the instance is created through {@link JsonValue#fromMsgpack(Value)}. Note that it returned
+     * {@code true} for the infinity in the Embulk SPI v0.11 and earlier.
+     *
      * @return {@code true} if this JSON number is integral
      *
      * @since 0.10.42
      */
     @Override
     public boolean isIntegral() {
-        // |this.value| must not be NaN nor infinite. If JsonDouble supports NaN or the infinity in the future, check also:
+        // |this.value| should not be NaN nor the infinity, but it can have NaN nor the infinity when it is created
+        // through JsonValue#fromMsgpack.
         //
-        //     !Double.isNaN(this.value) && !Double.isInfinite(this.value)
-        return this.value == Math.rint(this.value);
+        // NaN and the infinity are not integral.
+        //
+        // this.value == Math.rint(this.value) is false for NaN because Math.rint returns NaN for NaN.
+        // On the other hand, the infinity needs the explicit check because Math.rint returns the infinity for the infinity.
+        return !Double.isInfinite(this.value) && this.value == Math.rint(this.value);
     }
 
     /**
@@ -349,13 +368,17 @@ public final class JsonDouble implements JsonNumber {
      * <p>Note that this conversion loses the fractional part and the precision of the number.
      * This is a convenience method for {@code bigDecimalValue().toBigInteger()}.
      *
+     * <p>It throws {@link ArithmeticException} for a {@link JsonDouble} instance that has {@code NaN} or the infinity.
+     * Note that it threw {@link NumberFormatException} for {@code NaN} and the infinity in the Embulk SPI v0.11 and earlier.
+     *
      * @return the {@link java.math.BigInteger} representation of this JSON number
+     * @throws ArithmeticException  if the JSON number is {@code NaN} or the infinity
      *
      * @since 0.10.42
      */
     @Override
     public BigInteger bigIntegerValue() {
-        return BigDecimal.valueOf(this.value).toBigInteger();
+        return this.bigDecimalValueInternal().toBigInteger();
     }
 
     /**
@@ -363,14 +386,17 @@ public final class JsonDouble implements JsonNumber {
      *
      * <p>It throws {@link ArithmeticException} if the JSON number has a non-zero fractional part.
      *
+     * <p>It also throws {@link ArithmeticException} for a {@link JsonDouble} instance that has {@code NaN} or the infinity.
+     * Note that it threw {@link NumberFormatException} for {@code NaN} and the infinity in the Embulk SPI v0.11 and earlier.
+     *
      * @return the {@link java.math.BigInteger} representation of this JSON number
-     * @throws ArithmeticException  if the JSON number has a non-zero fractional part
+     * @throws ArithmeticException  if the JSON number has a non-zero fractional part, or if the JSON number is {@code NaN} or the infinity
      *
      * @since 0.10.42
      */
     @Override
     public BigInteger bigIntegerValueExact() {
-        return BigDecimal.valueOf(this.value).toBigIntegerExact();
+        return this.bigDecimalValueInternal().toBigIntegerExact();
     }
 
     /**
@@ -407,11 +433,15 @@ rrowing Primitive Conversion</a>
     /**
      * Returns this JSON number as {@link java.math.BigDecimal}.
      *
+     * <p>It throws {@link ArithmeticException} for a {@link JsonDouble} instance that has {@code NaN} or the infinity.
+     * Note that it threw {@link NumberFormatException} for {@code NaN} and the infinity in the Embulk SPI v0.11 and earlier.
+     *
      * @return the {@link java.math.BigDecimal} representation of this JSON number
+     * @throws ArithmeticException  if the JSON number is {@code NaN} or the infinity
      */
     @Override
     public BigDecimal bigDecimalValue() {
-        return BigDecimal.valueOf(this.value);
+        return this.bigDecimalValueInternal();
     }
 
     /**
@@ -419,13 +449,21 @@ rrowing Primitive Conversion</a>
      *
      * <p>If this JSON number is created with a literal by {@link #withLiteral(double, String)}, it returns the literal.
      *
+     * <p>Note that it may not return a valid JSON representation for a {@link JsonDouble} instance
+     * that has {@code NaN} or the infinity. The representation for {@code NaN} and the infinity may change in the future.
+     *
      * @return the stringified JSON representation of this JSON number
      *
      * @since 0.10.42
      */
     @Override
     public String toJson() {
-        // |this.value| must not be NaN nor infinite. Consider the output if JsonDouble supports NaN or the infinity in the future.
+        // A JsonDouble instance can have NaN or the infinity when it is created through JsonValue#fromMsgpack.
+        //
+        // It returns "NaN", "Infinity", or "-Infinity" as-is for NaN and the infinity for now.
+        // Note that "NaN", "Infinity", and "-Infinity" are not valid JSON representations.
+        //
+        // TODO: Reconsider the output for NaN and the infinity.
         if (this.literal != null) {
             return this.literal;
         }
@@ -459,13 +497,21 @@ rrowing Primitive Conversion</a>
     /**
      * Returns the string representation of this JSON number.
      *
+     * <p>Note that it may not return a valid JSON representation for a {@link JsonDouble} instance
+     * that has {@code NaN} or the infinity. The representation for {@code NaN} and the infinity may change in the future.
+     *
      * @return the string representation of this JSON number
      *
      * @since 0.10.42
      */
     @Override
     public String toString() {
-        // |this.value| must not be NaN nor infinite. Consider the output if JsonDouble supports NaN or the infinity in the future.
+        // A JsonDouble instance can have NaN or the infinity when it is created through JsonValue#fromMsgpack.
+        //
+        // It returns "NaN", "Infinity", or "-Infinity" as-is for NaN and the infinity for now.
+        // Note that "NaN", "Infinity", and "-Infinity" are not valid JSON representations.
+        //
+        // TODO: Reconsider the output for NaN and the infinity.
         return Double.toString(this.value);
     }
 
@@ -475,8 +521,12 @@ rrowing Primitive Conversion</a>
      * <p>Two different {@link JsonDouble} instances that have {@code NaN} are considered to be equal by {@link #equals(Object)}
      * since the Embulk SPI v0.12, in the same manner as {@link Double#equals(Object)}.
      *
-     * <p>Note that they were usually considered NOT to be equal in the Embulk SPI v0.11 and earlier. They were equal
-     * only when they were created from the same {@link org.msgpack.value.ImmutableFloatValue} instance.
+     * <p>Note that such {@code NaN} instances were usually considered NOT to be equal in the Embulk SPI v0.11 and earlier.
+     * They were equal only when they were created from the same {@link org.msgpack.value.ImmutableFloatValue} instance.
+     *
+     * <p>Two different {@link JsonDouble} instances that have the infinity are considered to be equal by {@link #equals(Object)}
+     * when both have the positive infinity, or when both have the negative infinity. A combination of the positive infinity
+     * and the negative infinity is considered not to be equal.
      *
      * @return {@code true} if the specified object is equal to this JSON number
      *
@@ -515,6 +565,16 @@ rrowing Primitive Conversion</a>
     public int hashCode() {
         // It is the same as the hash code of MessagePack's Float value.
         return Double.hashCode(this.value);
+    }
+
+    private BigDecimal bigDecimalValueInternal() {
+        // A JsonDouble instance can have NaN or the infinity when it is created through JsonValue#fromMsgpack.
+        // BigDecimal cannot represent NaN and the infinity. BigDecimal.valueOf throws NumberFormatException for NaN and
+        // the infinity. It throws ArithmeticException instead, consistently with the other methods of JsonDouble.
+        if (Double.isNaN(this.value) || Double.isInfinite(this.value)) {
+            throw new ArithmeticException("Not a finite number: " + this.value);
+        }
+        return BigDecimal.valueOf(this.value);
     }
 
     private final double value;

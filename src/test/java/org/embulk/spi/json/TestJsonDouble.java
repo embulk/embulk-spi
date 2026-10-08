@@ -983,9 +983,9 @@ public class TestJsonDouble {
 
     @Test
     public void testFromMsgpackNonFinite() {
-        // JsonValue#fromMsgpack has passed NaN and the infinity through as-is while JsonDouble#of rejects them.
-        // The assertions here are just to record the behavior as of now. They do not mean the behavior is intended,
-        // except for the equality of NaN, which is intended as commented below.
+        // A JsonDouble instance can have NaN or the infinity when it is created through JsonValue#fromMsgpack,
+        // while JsonDouble#of and JsonDouble#withLiteral never accept NaN and the infinity.
+        // JsonDouble is designed to work consistently even with NaN and the infinity.
 
         final Value msgpackNan = ValueFactory.newFloat(Double.NaN);
         final JsonValue nan = JsonValue.fromMsgpack(msgpackNan);
@@ -994,6 +994,11 @@ public class TestJsonDouble {
         assertFalse(nan.asJsonDouble().isIntegral());
         assertFalse(nan.asJsonDouble().isLongValue());
         assertEquals(0L, nan.asJsonDouble().longValue());
+        assertThrows(ArithmeticException.class, () -> nan.asJsonDouble().longValueExact());
+        assertThrows(ArithmeticException.class, () -> nan.asJsonDouble().bigIntegerValue());
+        assertThrows(ArithmeticException.class, () -> nan.asJsonDouble().bigIntegerValueExact());
+        assertThrows(ArithmeticException.class, () -> nan.asJsonDouble().bigDecimalValue());
+        // JsonDouble#toJson returns "NaN" as-is for NaN for now. Note that "NaN" is not a valid JSON representation.
         assertEquals("NaN", nan.toJson());
         assertEquals("NaN", nan.toString());
         assertSame(msgpackNan, nan.toMsgpack());
@@ -1001,7 +1006,6 @@ public class TestJsonDouble {
         assertTrue(nan.equals(nan));
 
         // Two different instances of JsonDouble with NaN are equal in the same manner as Double#equals.
-        // It is the intended behavior, unlike the other assertions here.
         //
         // When JsonDouble had MessagePack's Float value as its internal representation, they were equal only when they
         // were created from the same instance of MessagePack's Float value, because the equality was delegated to
@@ -1032,9 +1036,17 @@ public class TestJsonDouble {
         final JsonValue infinity = JsonValue.fromMsgpack(msgpackInfinity);
         assertTrue(infinity.isJsonDouble());
         assertEquals(Double.POSITIVE_INFINITY, infinity.asJsonDouble().doubleValue());
-        assertTrue(infinity.asJsonDouble().isIntegral());
+        // The infinity is not integral. Note that JsonDouble#isIntegral returned true for the infinity in the Embulk SPI
+        // v0.11 and earlier.
+        assertFalse(infinity.asJsonDouble().isIntegral());
         assertFalse(infinity.asJsonDouble().isLongValue());
         assertEquals(Long.MAX_VALUE, infinity.asJsonDouble().longValue());
+        assertThrows(ArithmeticException.class, () -> infinity.asJsonDouble().longValueExact());
+        assertThrows(ArithmeticException.class, () -> infinity.asJsonDouble().bigIntegerValue());
+        assertThrows(ArithmeticException.class, () -> infinity.asJsonDouble().bigIntegerValueExact());
+        assertThrows(ArithmeticException.class, () -> infinity.asJsonDouble().bigDecimalValue());
+        // JsonDouble#toJson returns "Infinity" as-is for the infinity for now. Note that "Infinity" is not a valid JSON
+        // representation.
         assertEquals("Infinity", infinity.toJson());
         assertEquals("Infinity", infinity.toString());
         assertSame(msgpackInfinity, infinity.toMsgpack());
@@ -1046,12 +1058,30 @@ public class TestJsonDouble {
         final JsonValue negativeInfinity = JsonValue.fromMsgpack(msgpackNegativeInfinity);
         assertTrue(negativeInfinity.isJsonDouble());
         assertEquals(Double.NEGATIVE_INFINITY, negativeInfinity.asJsonDouble().doubleValue());
-        assertTrue(negativeInfinity.asJsonDouble().isIntegral());
+        assertFalse(negativeInfinity.asJsonDouble().isIntegral());
         assertFalse(negativeInfinity.asJsonDouble().isLongValue());
         assertEquals(Long.MIN_VALUE, negativeInfinity.asJsonDouble().longValue());
+        assertThrows(ArithmeticException.class, () -> negativeInfinity.asJsonDouble().longValueExact());
+        assertThrows(ArithmeticException.class, () -> negativeInfinity.asJsonDouble().bigIntegerValue());
+        assertThrows(ArithmeticException.class, () -> negativeInfinity.asJsonDouble().bigIntegerValueExact());
+        assertThrows(ArithmeticException.class, () -> negativeInfinity.asJsonDouble().bigDecimalValue());
         assertEquals("-Infinity", negativeInfinity.toJson());
         assertEquals("-Infinity", negativeInfinity.toString());
         assertSame(msgpackNegativeInfinity, negativeInfinity.toMsgpack());
         assertEquals(msgpackNegativeInfinity.hashCode(), negativeInfinity.hashCode());
+
+        // Two different instances of JsonDouble with the negative infinity are equal.
+        final JsonValue anotherNegativeInfinity = JsonValue.fromMsgpack(ValueFactory.newFloat(Double.NEGATIVE_INFINITY));
+        assertTrue(negativeInfinity.equals(anotherNegativeInfinity));
+        assertTrue(anotherNegativeInfinity.equals(negativeInfinity));
+        assertEquals(negativeInfinity.hashCode(), anotherNegativeInfinity.hashCode());
+
+        // The negative infinity is not equal to the positive infinity.
+        assertFalse(negativeInfinity.equals(infinity));
+        assertFalse(infinity.equals(negativeInfinity));
+
+        // The negative infinity is not equal to Long.MIN_VALUE although JsonDouble#longValue returns Long.MIN_VALUE for it.
+        assertFalse(negativeInfinity.equals(JsonLong.of(Long.MIN_VALUE)));
+        assertFalse(JsonLong.of(Long.MIN_VALUE).equals(negativeInfinity));
     }
 }
