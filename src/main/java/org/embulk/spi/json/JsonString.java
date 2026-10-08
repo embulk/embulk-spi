@@ -35,13 +35,21 @@ public final class JsonString implements JsonValue {
         if (value == null) {
             throw new NullPointerException("string is null.");
         }
-        this.value = new ImmutableStringValueImpl(value);
+        this.value = value;
         this.literal = literal;
+        this.msgpackStringCache = null;
     }
 
     private JsonString(final ImmutableStringValueImpl msgpackValue) {
-        this.value = msgpackValue;
+        // This constructor is internal only for JsonValue#fromMsgpack. The specified ImmutableStringValueImpl is a byte sequence,
+        // which may not be valid as UTF-8, while JsonString has a Java String that cannot represent a byte sequence invalid
+        // as UTF-8.
+        //
+        // ImmutableStringValueImpl#asString throws MessageStringCodingException when the byte sequence is not valid as UTF-8.
+        // It does not replace the invalid byte sequence with any replacement character.
+        this.value = msgpackValue.asString();
         this.literal = null;
+        this.msgpackStringCache = msgpackValue;
     }
 
     static JsonString fromMsgpack(final StringValue msgpackValue) {
@@ -125,9 +133,9 @@ public final class JsonString implements JsonValue {
     @Override
     public int presumeReferenceSizeInBytes() {
         if (this.literal == null) {
-            return this.value.asString().length() * 2 + 4;
+            return this.value.length() * 2 + 4;
         }
-        return (this.value.asString().length()) * 2 + (this.literal.length() * 2) + 4;
+        return (this.value.length()) * 2 + (this.literal.length() * 2) + 4;
     }
 
     /**
@@ -138,7 +146,7 @@ public final class JsonString implements JsonValue {
      * @since 0.10.42
      */
     public String getString() {
-        return this.value.asString();
+        return this.value;
     }
 
     /**
@@ -149,7 +157,7 @@ public final class JsonString implements JsonValue {
      * @since 0.10.42
      */
     public CharSequence getChars() {
-        return this.value.asString();
+        return this.value;
     }
 
     /**
@@ -167,7 +175,7 @@ public final class JsonString implements JsonValue {
         if (this.literal != null) {
             return this.literal;
         }
-        return escapeStringForJsonLiteral(this.value.asString());
+        return escapeStringForJsonLiteral(this.value);
     }
 
     /**
@@ -186,7 +194,12 @@ public final class JsonString implements JsonValue {
     @Deprecated
     @Override
     public Value toMsgpack() {
-        return this.value;
+        if (this.msgpackStringCache != null) {
+            return this.msgpackStringCache;
+        }
+
+        this.msgpackStringCache = new ImmutableStringValueImpl(this.value);
+        return this.msgpackStringCache;
     }
 
     /**
@@ -202,7 +215,7 @@ public final class JsonString implements JsonValue {
      */
     @Override
     public String toString() {
-        return escapeStringForJsonLiteral(this.value.asString());
+        return escapeStringForJsonLiteral(this.value);
     }
 
     /**
@@ -225,7 +238,7 @@ public final class JsonString implements JsonValue {
 
         final JsonString other = (JsonString) otherObject;
 
-        return Objects.equals(this.value.asString(), other.value.asString());
+        return Objects.equals(this.value, other.value);
     }
 
     /**
@@ -237,7 +250,7 @@ public final class JsonString implements JsonValue {
      */
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.value.asString());
+        return Objects.hashCode(this.value);
     }
 
     static void appendEscapedStringForJsonLiteral(final String original, final StringBuilder builder) {
@@ -322,7 +335,9 @@ public final class JsonString implements JsonValue {
         return builder.toString();
     }
 
-    private final ImmutableStringValueImpl value;
+    private final String value;
 
     private final String literal;
+
+    private ImmutableStringValueImpl msgpackStringCache;
 }

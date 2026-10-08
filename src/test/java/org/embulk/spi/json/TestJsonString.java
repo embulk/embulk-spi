@@ -18,11 +18,14 @@ package org.embulk.spi.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Modifier;
 import org.junit.jupiter.api.Test;
+import org.msgpack.core.MessageStringCodingException;
+import org.msgpack.value.Value;
 import org.msgpack.value.ValueFactory;
 
 public class TestJsonString {
@@ -155,5 +158,52 @@ public class TestJsonString {
         assertEquals(JsonString.of("hogehoge"), JsonValue.fromMsgpack(ValueFactory.newString("hogehoge")));
         assertEquals(JsonString.of("\n"), JsonValue.fromMsgpack(ValueFactory.newString("\n")));
         assertEquals(JsonString.of("\0"), JsonValue.fromMsgpack(ValueFactory.newString("\0")));
+    }
+
+    @Test
+    public void testToMsgpack() {
+        final JsonString string = JsonString.of("hogehoge");
+        assertEquals(ValueFactory.newString("hogehoge"), string.toMsgpack());
+        assertSame(string.toMsgpack(), string.toMsgpack());
+
+        // JsonString#toMsgpack returns the same MessagePack value as-is that is given to JsonValue#fromMsgpack.
+        final Value msgpackString = ValueFactory.newString("hogehoge");
+        assertSame(msgpackString, JsonValue.fromMsgpack(msgpackString).toMsgpack());
+
+        // It applies also to MessagePack's String value created from a byte sequence that is valid as UTF-8.
+        final Value msgpackStringFromBytes = ValueFactory.newString(new byte[] { 'h', 'o', 'g', 'e' });
+        final JsonValue fromBytes = JsonValue.fromMsgpack(msgpackStringFromBytes);
+        assertEquals(JsonString.of("hoge"), fromBytes);
+        assertSame(msgpackStringFromBytes, fromBytes.toMsgpack());
+    }
+
+    @Test
+    public void testFromMsgpackInvalidUtf8() {
+        // MessagePack's String value is a byte sequence, which may not be valid as UTF-8, while JsonString has a Java String.
+        // JsonValue#fromMsgpack throws MessageStringCodingException for a MessagePack's String value that is not valid as UTF-8.
+        //
+        // Note that JsonValue#fromMsgpack did not throw it in the Embulk SPI v0.11 and earlier. Instead, methods of the created
+        // JsonString instance threw it afterwards, such as JsonString#getString and JsonString#toJson.
+        final Value invalid = ValueFactory.newString(new byte[] { (byte) 0xff, (byte) 0xfe });
+        assertThrows(MessageStringCodingException.class, () -> JsonValue.fromMsgpack(invalid));
+
+        // A truncated multi-byte character.
+        final Value truncated = ValueFactory.newString(new byte[] { (byte) 0xe3, (byte) 0x81 });
+        assertThrows(MessageStringCodingException.class, () -> JsonValue.fromMsgpack(truncated));
+
+        // An invalid byte among valid characters.
+        final Value mixed = ValueFactory.newString(new byte[] { 'a', (byte) 0xff, 'b' });
+        assertThrows(MessageStringCodingException.class, () -> JsonValue.fromMsgpack(mixed));
+
+        // It applies to MessagePack's String values in MessagePack's Array and Map values.
+        assertThrows(
+                MessageStringCodingException.class,
+                () -> JsonValue.fromMsgpack(ValueFactory.newArray(ValueFactory.newString("valid"), invalid)));
+        assertThrows(
+                MessageStringCodingException.class,
+                () -> JsonValue.fromMsgpack(ValueFactory.newMap(ValueFactory.newString("key"), invalid)));
+        assertThrows(
+                MessageStringCodingException.class,
+                () -> JsonValue.fromMsgpack(ValueFactory.newMap(invalid, ValueFactory.newString("value"))));
     }
 }

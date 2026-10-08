@@ -22,7 +22,8 @@ import org.msgpack.value.impl.ImmutableStringValueImpl;
 
 public final class FakeJsonString implements JsonValue {
     private FakeJsonString(final String value) {
-        this.value = new ImmutableStringValueImpl(value);
+        this.value = value;
+        this.msgpackStringCache = null;
     }
 
     public static FakeJsonString of(final String value) {
@@ -36,30 +37,35 @@ public final class FakeJsonString implements JsonValue {
 
     @Override
     public int presumeReferenceSizeInBytes() {
-        return this.value.asString().length() * 2 + 4;
+        return this.value.length() * 2 + 4;
     }
 
     public String getString() {
-        return this.value.asString();
+        return this.value;
     }
 
     public CharSequence getChars() {
-        return this.value.asString();
-    }
-
-    @Override
-    public String toJson() {
-        return escapeStringForJsonLiteral(this.value.asString());
-    }
-
-    @Deprecated
-    public Value toMsgpack() {
         return this.value;
     }
 
     @Override
+    public String toJson() {
+        return escapeStringForJsonLiteral(this.value);
+    }
+
+    @Deprecated
+    public Value toMsgpack() {
+        if (this.msgpackStringCache != null) {
+            return this.msgpackStringCache;
+        }
+
+        this.msgpackStringCache = new ImmutableStringValueImpl(this.value);
+        return this.msgpackStringCache;
+    }
+
+    @Override
     public String toString() {
-        return escapeStringForJsonLiteral(this.value.asString());
+        return escapeStringForJsonLiteral(this.value);
     }
 
     @Override
@@ -70,7 +76,7 @@ public final class FakeJsonString implements JsonValue {
 
         // Fake!
         if (otherObject instanceof JsonString) {
-            return Objects.equals(this.value.asString(), ((JsonString) otherObject).getString());
+            return Objects.equals(this.value, ((JsonString) otherObject).getString());
         }
 
         // Check by `instanceof` in case against unexpected arbitrary extension of JsonValue.
@@ -80,12 +86,12 @@ public final class FakeJsonString implements JsonValue {
 
         final FakeJsonString other = (FakeJsonString) otherObject;
 
-        return Objects.equals(this.value.asString(), other.value.asString());
+        return Objects.equals(this.value, other.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.value.asString());
+        return Objects.hashCode(this.value);
     }
 
     static void appendEscapedStringForJsonLiteral(final String original, final StringBuilder builder) {
@@ -170,5 +176,7 @@ public final class FakeJsonString implements JsonValue {
         return builder.toString();
     }
 
-    private final ImmutableStringValueImpl value;
+    private final String value;
+
+    private ImmutableStringValueImpl msgpackStringCache;
 }
