@@ -209,13 +209,20 @@ public final class JsonDouble implements JsonNumber {
     /**
      * Returns {@code true} if the JSON number is integral in the range of {@code long}, [-2<sup>63</sup> to 2<sup>63</sup>-1].
      *
+     * <p>Note that it returned {@code true} for 2<sup>63</sup>, which is out of the range of {@code long}, in the Embulk SPI
+     * v0.11 and earlier.
+     *
      * @return {@code true} if the JSON number is integral in the range of {@code long}
      *
      * @since 0.10.42
      */
     @Override
     public boolean isLongValue() {
-        return this.isIntegral() && ((double) Long.MIN_VALUE) <= this.value && this.value <= ((double) Long.MAX_VALUE);
+        // The upper bound must be exclusive with 2^63, not inclusive with (double) Long.MAX_VALUE.
+        //
+        // Long.MAX_VALUE, 2^63-1, cannot be represented exactly in double. (double) Long.MAX_VALUE is rounded up to 2^63,
+        // which is out of the range of long.
+        return this.isIntegral() && -0x1p63 <= this.value && this.value < 0x1p63;
     }
 
     /**
@@ -348,6 +355,9 @@ public final class JsonDouble implements JsonNumber {
      *
      * <p>It throws {@link ArithmeticException} if the JSON number is out of the range of {@code long}, or has a
      * non-zero fractional part.
+     *
+     * <p>Note that it returned {@link Long#MAX_VALUE} for 2<sup>63</sup>, which is out of the range of {@code long},
+     * without throwing {@link ArithmeticException}, in the Embulk SPI v0.11 and earlier.
      *
      * @return the {@code long} representation of this JSON number
      * @throws ArithmeticException  if the JSON number is out of the range of {@code long}, or has a non-zero fractional part
