@@ -315,18 +315,23 @@ public class TestJsonLong {
 
     @Test
     public void testHashCode() {
-        // JsonLong#hashCode has returned the same hash code as the corresponding MessagePack's Integer value.
-        // Note that it is different from Long#hashCode for negative integers in the range of int.
+        // JsonLong#hashCode returns the same hash code as Long#hashCode.
         assertEquals(0, JsonLong.of(0L).hashCode());
         assertEquals(42, JsonLong.of(42L).hashCode());
-        assertEquals(-1, JsonLong.of(-1L).hashCode());
-        assertNotEquals(Long.hashCode(-1L), JsonLong.of(-1L).hashCode());
+        assertEquals(0, JsonLong.of(-1L).hashCode());
+        assertEquals(41, JsonLong.of(-42L).hashCode());
+
+        // Note that JsonLong#hashCode returned the same hash code as the corresponding MessagePack's Integer value in the Embulk
+        // SPI v0.11 and earlier. It is different from Long#hashCode for a negative integer in the range of int.
+        assertEquals(-1, ValueFactory.newInteger(-1L).hashCode());
+        assertEquals(-42, ValueFactory.newInteger(-42L).hashCode());
 
         final long[] values = {
             0L,
             1L,
             -1L,
             42L,
+            -42L,
             (long) Integer.MAX_VALUE,
             (long) Integer.MIN_VALUE,
             ((long) Integer.MAX_VALUE) + 1L,
@@ -337,10 +342,9 @@ public class TestJsonLong {
             Long.MIN_VALUE,
         };
         for (final long value : values) {
-            assertEquals(ValueFactory.newInteger(value).hashCode(), JsonLong.of(value).hashCode());
-            assertEquals(
-                    ValueFactory.newInteger(value).hashCode(),
-                    JsonValue.fromMsgpack(ValueFactory.newInteger(value)).hashCode());
+            assertEquals(Long.hashCode(value), JsonLong.of(value).hashCode());
+            assertEquals(Long.valueOf(value).hashCode(), JsonLong.of(value).hashCode());
+            assertEquals(Long.hashCode(value), JsonValue.fromMsgpack(ValueFactory.newInteger(value)).hashCode());
         }
     }
 }
