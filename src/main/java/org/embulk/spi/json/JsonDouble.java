@@ -528,6 +528,11 @@ rrowing Primitive Conversion</a>
     /**
      * Compares the specified object with this JSON number for equality.
      *
+     * <p>A {@link JsonDouble} instance and a {@link JsonLong} instance are NOT considered to be equal by {@link #equals(Object)}
+     * since the Embulk SPI v0.12, even if they represent the same integral number, such as {@code 1.0} and {@code 1}.
+     *
+     * <p>Such instances that represent the same integral number were considered to be equal in the Embulk SPI v0.11 and earlier.
+     *
      * <p>Two different {@link JsonDouble} instances that have {@code NaN} are considered to be equal by {@link #equals(Object)}
      * since the Embulk SPI v0.12, in the same manner as {@link Double#equals(Object)}.
      *
@@ -556,11 +561,7 @@ rrowing Primitive Conversion</a>
             return this.value == other.value || (Double.isNaN(this.value) && Double.isNaN(other.value));
         }
 
-        if (otherObject instanceof JsonLong) {
-            final JsonLong other = (JsonLong) otherObject;
-            return this.isLongValue() && (long) this.value == other.longValue();
-        }
-
+        // JsonDouble is never equal to JsonLong even if they represent the same integral number.
         return false;
     }
 
