@@ -23,7 +23,8 @@ import org.msgpack.value.impl.ImmutableLongValueImpl;
 
 public final class FakeJsonLong implements JsonValue {
     private FakeJsonLong(final long value) {
-        this.value = new ImmutableLongValueImpl(value);
+        this.value = value;
+        this.msgpackLongCache = null;
     }
 
     public static FakeJsonLong of(final long value) {
@@ -45,15 +46,15 @@ public final class FakeJsonLong implements JsonValue {
     }
 
     public boolean isByteValue() {
-        return this.value.isInByteRange();
+        return ((long) Byte.MIN_VALUE) <= this.value && this.value <= ((long) Byte.MAX_VALUE);
     }
 
     public boolean isShortValue() {
-        return this.value.isInShortRange();
+        return ((long) Short.MIN_VALUE) <= this.value && this.value <= ((long) Short.MAX_VALUE);
     }
 
     public boolean isIntValue() {
-        return this.value.isInIntRange();
+        return ((long) Integer.MIN_VALUE) <= this.value && this.value <= ((long) Integer.MAX_VALUE);
     }
 
     public boolean isLongValue() {
@@ -61,79 +62,84 @@ public final class FakeJsonLong implements JsonValue {
     }
 
     public byte byteValue() {
-        return this.value.toByte();
+        return (byte) this.value;
     }
 
     public byte byteValueExact() {
         if (!this.isByteValue()) {
             throw new ArithmeticException("Out of the range of byte: " + this.value);
         }
-        return this.value.toByte();
+        return (byte) this.value;
     }
 
     public short shortValue() {
-        return this.value.toShort();
+        return (short) this.value;
     }
 
     public short shortValueExact() {
         if (!this.isShortValue()) {
             throw new ArithmeticException("Out of the range of short: " + this.value);
         }
-        return this.value.toShort();
+        return (short) this.value;
     }
 
     public int intValue() {
-        return this.value.toInt();
+        return (int) this.value;
     }
 
     public int intValueExact() {
         if (!this.isIntValue()) {
             throw new ArithmeticException("Out of the range of int: " + this.value);
         }
-        return this.value.toInt();
+        return (int) this.value;
     }
 
     public long longValue() {
-        return this.value.toLong();
+        return this.value;
     }
 
     public long longValueExact() {
-        return this.value.toLong();
+        return this.value;
     }
 
     public BigInteger bigIntegerValue() {
-        return this.value.toBigInteger();
+        return BigInteger.valueOf(this.value);
     }
 
     public BigInteger bigIntegerValueExact() {
-        return this.value.toBigInteger();
+        return BigInteger.valueOf(this.value);
     }
 
     public float floatValue() {
-        return this.value.toFloat();
+        return (float) this.value;
     }
 
     public double doubleValue() {
-        return this.value.toDouble();
+        return (double) this.value;
     }
 
     public BigDecimal bigDecimalValue() {
-        return BigDecimal.valueOf(this.value.toLong());
+        return BigDecimal.valueOf(this.value);
     }
 
     @Override
     public String toJson() {
-        return Long.toString(this.value.toLong());
+        return Long.toString(this.value);
     }
 
     @Deprecated
     public Value toMsgpack() {
-        return this.value;
+        if (this.msgpackLongCache != null) {
+            return this.msgpackLongCache;
+        }
+
+        this.msgpackLongCache = new ImmutableLongValueImpl(this.value);
+        return this.msgpackLongCache;
     }
 
     @Override
     public String toString() {
-        return Long.toString(this.value.toLong());
+        return Long.toString(this.value);
     }
 
     @Override
@@ -145,7 +151,7 @@ public final class FakeJsonLong implements JsonValue {
         // Check by `instanceof` in case against unexpected arbitrary extension of JsonValue.
         if (otherObject instanceof FakeJsonLong) {
             final FakeJsonLong other = (FakeJsonLong) otherObject;
-            return this.value.equals(other.value);
+            return this.value == other.value;
         }
 
         // Fake!
@@ -159,8 +165,10 @@ public final class FakeJsonLong implements JsonValue {
 
     @Override
     public int hashCode() {
-        return this.value.hashCode();
+        return Long.hashCode(this.value);
     }
 
-    private final ImmutableLongValueImpl value;
+    private final long value;
+
+    private ImmutableLongValueImpl msgpackLongCache;
 }
