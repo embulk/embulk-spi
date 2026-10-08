@@ -482,17 +482,21 @@ public final class JsonLong implements JsonNumber {
     /**
      * Returns the hash code value for this JSON integral number.
      *
+     * <p>The hash code is calculated differently since the Embulk SPI v0.12, but it should not matter in general
+     * because the hash code is consistent in the same environment with the same version of the Embulk SPI.
+     *
      * @return the hash code value for this JSON integral number
      *
      * @since 0.10.42
      */
     @Override
     public int hashCode() {
-        // It is the same as the hash code of MessagePack's Integer value, which is different from Long#hashCode.
-        if (((long) Integer.MIN_VALUE) <= this.value && this.value <= ((long) Integer.MAX_VALUE)) {
-            return (int) this.value;
-        }
-        return (int) (this.value ^ (this.value >>> 32));
+        // It returned the same hash code as the corresponding MessagePack's Integer value in the Embulk SPI v0.11 and earlier.
+        //
+        // The hash code of MessagePack's Integer value is the integer itself as int when the integer is in the range of int.
+        // It is different from Long#hashCode for a negative integer in the range of int. For example, the hash code of -1 was
+        // -1 while Long.hashCode(-1L) is 0. MessagePack's hash code is the same as Long#hashCode for the other integers.
+        return Long.hashCode(this.value);
     }
 
     private final long value;
