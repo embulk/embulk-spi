@@ -191,7 +191,7 @@ public class TestJsonDouble {
         assertEquals("0.0", jsonDouble.toJson());
         assertEquals("0.0", jsonDouble.toString());
         assertEquals(JsonDouble.of(0.0), jsonDouble);
-        assertEquals(JsonDouble.of(-0.0), jsonDouble);
+        assertNotEquals(JsonDouble.of(-0.0), jsonDouble);
         assertNotEquals(JsonDouble.of(0.000001), jsonDouble);
         assertNotEquals(JsonDouble.of(-0.000001), jsonDouble);
         assertNotEquals(JsonLong.of(0L), jsonDouble);
@@ -250,7 +250,7 @@ public class TestJsonDouble {
 
         assertEquals("-0.0", jsonDouble.toJson());
         assertEquals("-0.0", jsonDouble.toString());
-        assertEquals(JsonDouble.of(0.0), jsonDouble);
+        assertNotEquals(JsonDouble.of(0.0), jsonDouble);
         assertEquals(JsonDouble.of(-0.0), jsonDouble);
         assertNotEquals(JsonDouble.of(0.000001), jsonDouble);
         assertNotEquals(JsonDouble.of(-0.000001), jsonDouble);
@@ -972,6 +972,76 @@ public class TestJsonDouble {
 
         // JsonDouble#equals must normally reject a fake imitation of JsonDouble.
         assertFalse(jsonDouble.equals(FakeJsonDouble.of(jsonDouble.doubleValue())));
+    }
+
+    @Test
+    public void testEqualityOfZeros() {
+        // 0.0 and -0.0 are not equal in the same manner as Double#equals.
+        // Note that they were equal in the Embulk SPI v0.11 and earlier.
+        final JsonDouble positiveZero = JsonDouble.of(0.0);
+        final JsonDouble negativeZero = JsonDouble.of(-0.0);
+        assertFalse(positiveZero.equals(negativeZero));
+        assertFalse(negativeZero.equals(positiveZero));
+        assertFalse(Double.valueOf(0.0).equals(Double.valueOf(-0.0)));
+
+        assertTrue(positiveZero.equals(JsonDouble.of(0.0)));
+        assertEquals(positiveZero.hashCode(), JsonDouble.of(0.0).hashCode());
+        assertTrue(negativeZero.equals(JsonDouble.of(-0.0)));
+        assertEquals(negativeZero.hashCode(), JsonDouble.of(-0.0).hashCode());
+
+        // They are still equal as numbers by JsonNumber#doubleValue.
+        assertTrue(positiveZero.doubleValue() == negativeZero.doubleValue());
+
+        // Their JSON representations are different.
+        assertEquals("0.0", positiveZero.toJson());
+        assertEquals("-0.0", negativeZero.toJson());
+
+        // It does not matter how they are created.
+        assertFalse(JsonValue.fromMsgpack(ValueFactory.newFloat(0.0)).equals(JsonValue.fromMsgpack(ValueFactory.newFloat(-0.0))));
+        assertFalse(JsonDouble.withLiteral(0.0, "0").equals(JsonDouble.withLiteral(-0.0, "0")));
+
+        // JsonArray and JsonObject are not equal when they contain 0.0 and -0.0 at the same place.
+        assertFalse(JsonArray.of(positiveZero).equals(JsonArray.of(negativeZero)));
+        assertFalse(JsonArray.of(negativeZero).equals(JsonArray.of(positiveZero)));
+        assertFalse(JsonObject.of("key", positiveZero).equals(JsonObject.of("key", negativeZero)));
+        assertFalse(JsonObject.of("key", negativeZero).equals(JsonObject.of("key", positiveZero)));
+    }
+
+    @Test
+    public void testEqualsAndHashCode() {
+        final double[] values = {
+            0.0,
+            -0.0,
+            1.0,
+            -1.0,
+            0.5,
+            12.41041,
+            1234567890.123456,
+            -1234567890.123456,
+            Double.MIN_VALUE,
+            -Double.MIN_VALUE,
+            Double.MAX_VALUE,
+            -Double.MAX_VALUE,
+            Double.NaN,
+            Double.longBitsToDouble(0x7ff8000000000001L),  // NaN in a different bit pattern
+            Double.POSITIVE_INFINITY,
+            Double.NEGATIVE_INFINITY,
+        };
+        for (final double left : values) {
+            for (final double right : values) {
+                // A JsonDouble instance can have NaN or the infinity when it is created through JsonValue#fromMsgpack.
+                final JsonValue jsonLeft = JsonValue.fromMsgpack(ValueFactory.newFloat(left));
+                final JsonValue jsonRight = JsonValue.fromMsgpack(ValueFactory.newFloat(right));
+
+                // JsonDouble#equals is in the same manner as Double#equals.
+                assertEquals(Double.valueOf(left).equals(Double.valueOf(right)), jsonLeft.equals(jsonRight));
+
+                // Equal instances must have the same hash code.
+                if (jsonLeft.equals(jsonRight)) {
+                    assertEquals(jsonLeft.hashCode(), jsonRight.hashCode());
+                }
+            }
+        }
     }
 
     @Test
