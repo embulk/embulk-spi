@@ -886,6 +886,42 @@ public class TestJsonDouble {
     }
 
     @Test
+    public void testBoundaryOfLong() {
+        // 2^63 is out of the range of long. Note that (double) Long.MAX_VALUE is rounded up to 2^63.
+        final JsonDouble over = JsonDouble.of(0x1p63);
+        assertEquals((double) Long.MAX_VALUE, over.doubleValue());
+        assertTrue(over.isIntegral());
+        assertFalse(over.isLongValue());
+        assertEquals(Long.MAX_VALUE, over.longValue());  // Overflow
+        assertThrows(ArithmeticException.class, () -> over.longValueExact());
+        assertFalse(over.equals(JsonLong.of(Long.MAX_VALUE)));
+        assertFalse(JsonLong.of(Long.MAX_VALUE).equals(over));
+
+        // The largest double that is less than 2^63 is in the range of long.
+        final JsonDouble max = JsonDouble.of(Math.nextDown(0x1p63));
+        assertTrue(max.isIntegral());
+        assertTrue(max.isLongValue());
+        assertEquals(9223372036854774784L, max.longValue());
+        assertEquals(9223372036854774784L, max.longValueExact());
+
+        // -2^63 is Long.MIN_VALUE, which is in the range of long.
+        final JsonDouble min = JsonDouble.of(-0x1p63);
+        assertTrue(min.isIntegral());
+        assertTrue(min.isLongValue());
+        assertEquals(Long.MIN_VALUE, min.longValue());
+        assertEquals(Long.MIN_VALUE, min.longValueExact());
+
+        // The largest double that is less than -2^63 is out of the range of long.
+        final JsonDouble under = JsonDouble.of(Math.nextDown(-0x1p63));
+        assertTrue(under.isIntegral());
+        assertFalse(under.isLongValue());
+        assertEquals(Long.MIN_VALUE, under.longValue());  // Overflow
+        assertThrows(ArithmeticException.class, () -> under.longValueExact());
+        assertFalse(under.equals(JsonLong.of(Long.MIN_VALUE)));
+        assertFalse(JsonLong.of(Long.MIN_VALUE).equals(under));
+    }
+
+    @Test
     public void testMinimunPositiveDecimal() {
         final JsonDouble jsonDouble = JsonDouble.of(Double.MIN_VALUE);
         assertEquals(JsonValue.EntityType.DOUBLE, jsonDouble.getEntityType());
