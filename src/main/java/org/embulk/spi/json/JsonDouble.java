@@ -539,6 +539,11 @@ rrowing Primitive Conversion</a>
      * <p>Note that such {@code NaN} instances were usually considered NOT to be equal in the Embulk SPI v0.11 and earlier.
      * They were equal only when they were created from the same {@link org.msgpack.value.ImmutableFloatValue} instance.
      *
+     * <p>Two {@link JsonDouble} instances that have {@code 0.0} and {@code -0.0} are NOT considered to be equal by
+     * {@link #equals(Object)} since the Embulk SPI v0.12, in the same manner as {@link Double#equals(Object)}.
+     *
+     * <p>Such instances of {@code 0.0} and {@code -0.0} were considered to be equal in the Embulk SPI v0.11 and earlier.
+     *
      * <p>Two different {@link JsonDouble} instances that have the infinity are considered to be equal by {@link #equals(Object)}
      * when both have the positive infinity, or when both have the negative infinity. A combination of the positive infinity
      * and the negative infinity is considered not to be equal.
@@ -557,8 +562,13 @@ rrowing Primitive Conversion</a>
         if (otherObject instanceof JsonDouble) {
             final JsonDouble other = (JsonDouble) otherObject;
 
-            // NaN is considered to be equal to NaN in the same manner as Double#equals, while NaN != NaN as primitive double.
-            return this.value == other.value || (Double.isNaN(this.value) && Double.isNaN(other.value));
+            // It compares the bit patterns in the same manner as Double#equals, not by == of primitive double.
+            //
+            // * NaN is considered to be equal to NaN, while NaN != NaN as primitive double.
+            // * 0.0 and -0.0 are considered NOT to be equal, while 0.0 == -0.0 as primitive double.
+            //
+            // Double#doubleToLongBits returns the same bit pattern for any NaN. It is consistent with #hashCode.
+            return Double.doubleToLongBits(this.value) == Double.doubleToLongBits(other.value);
         }
 
         // JsonDouble is never equal to JsonLong even if they represent the same integral number.
