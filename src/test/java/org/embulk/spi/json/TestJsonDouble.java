@@ -19,6 +19,7 @@ package org.embulk.spi.json;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import org.junit.jupiter.api.Test;
+import org.msgpack.value.Value;
 import org.msgpack.value.ValueFactory;
 
 public class TestJsonDouble {
@@ -942,5 +944,114 @@ public class TestJsonDouble {
         assertEquals(JsonDouble.of(-0.0), JsonValue.fromMsgpack(ValueFactory.newFloat(-0.0)));
         assertEquals(JsonDouble.of(12.41041), JsonValue.fromMsgpack(ValueFactory.newFloat(12.41041)));
         assertEquals(JsonDouble.of(Double.MIN_VALUE), JsonValue.fromMsgpack(ValueFactory.newFloat(Double.MIN_VALUE)));
+    }
+
+    @Test
+    public void testToMsgpack() {
+        final JsonDouble jsonDouble = JsonDouble.of(12.41041);
+        assertEquals(ValueFactory.newFloat(12.41041), jsonDouble.toMsgpack());
+        assertSame(jsonDouble.toMsgpack(), jsonDouble.toMsgpack());
+
+        // JsonDouble#toMsgpack returns the same MessagePack value as-is that is given to JsonValue#fromMsgpack.
+        final Value msgpackFloat = ValueFactory.newFloat(12.41041);
+        assertSame(msgpackFloat, JsonValue.fromMsgpack(msgpackFloat).toMsgpack());
+    }
+
+    @Test
+    public void testHashCode() {
+        // JsonDouble#hashCode has returned the same hash code as the corresponding MessagePack's Float value.
+        final double[] values = {
+            0.0,
+            -0.0,
+            1.0,
+            -1.0,
+            0.5,
+            12.41041,
+            1234567890.123456,
+            -1234567890.123456,
+            Double.MIN_VALUE,
+            Double.MAX_VALUE,
+            -Double.MAX_VALUE,
+        };
+        for (final double value : values) {
+            assertEquals(ValueFactory.newFloat(value).hashCode(), JsonDouble.of(value).hashCode());
+            assertEquals(
+                    ValueFactory.newFloat(value).hashCode(),
+                    JsonValue.fromMsgpack(ValueFactory.newFloat(value)).hashCode());
+        }
+    }
+
+    @Test
+    public void testFromMsgpackNonFinite() {
+        // JsonValue#fromMsgpack has passed NaN and the infinity through as-is while JsonDouble#of rejects them.
+        // The assertions here are just to record the behavior as of now. They do not mean the behavior is intended,
+        // except for the equality of NaN, which is intended as commented below.
+
+        final Value msgpackNan = ValueFactory.newFloat(Double.NaN);
+        final JsonValue nan = JsonValue.fromMsgpack(msgpackNan);
+        assertTrue(nan.isJsonDouble());
+        assertTrue(Double.isNaN(nan.asJsonDouble().doubleValue()));
+        assertFalse(nan.asJsonDouble().isIntegral());
+        assertFalse(nan.asJsonDouble().isLongValue());
+        assertEquals(0L, nan.asJsonDouble().longValue());
+        assertEquals("NaN", nan.toJson());
+        assertEquals("NaN", nan.toString());
+        assertSame(msgpackNan, nan.toMsgpack());
+        assertEquals(msgpackNan.hashCode(), nan.hashCode());
+        assertTrue(nan.equals(nan));
+
+        // Two different instances of JsonDouble with NaN are equal in the same manner as Double#equals.
+        // It is the intended behavior, unlike the other assertions here.
+        //
+        // When JsonDouble had MessagePack's Float value as its internal representation, they were equal only when they
+        // were created from the same instance of MessagePack's Float value, because the equality was delegated to
+        // MessagePack's Float value, which is equal to itself even if it is NaN. They were not equal when they were
+        // created from different instances of MessagePack's Float value. It is a difference in behavior from that time.
+        final JsonValue anotherNan = JsonValue.fromMsgpack(ValueFactory.newFloat(Double.NaN));
+        assertTrue(nan.equals(anotherNan));
+        assertTrue(anotherNan.equals(nan));
+        assertEquals(nan.hashCode(), anotherNan.hashCode());
+        assertTrue(nan.equals(JsonValue.fromMsgpack(msgpackNan)));
+        assertTrue(JsonValue.fromMsgpack(msgpackNan).equals(nan));
+        assertTrue(nan.equals(JsonValue.fromMsgpack(nan.toMsgpack())));
+
+        // NaN in a different bit pattern is also NaN.
+        final JsonValue nanInAnotherBitPattern = JsonValue.fromMsgpack(ValueFactory.newFloat(Double.longBitsToDouble(0x7ff8000000000001L)));
+        assertTrue(nan.equals(nanInAnotherBitPattern));
+        assertTrue(nanInAnotherBitPattern.equals(nan));
+        assertEquals(nan.hashCode(), nanInAnotherBitPattern.hashCode());
+
+        // NaN is not equal to any number that is not NaN.
+        assertFalse(nan.equals(JsonValue.fromMsgpack(ValueFactory.newFloat(Double.POSITIVE_INFINITY))));
+        assertFalse(nan.equals(JsonDouble.of(0.0)));
+        assertFalse(JsonDouble.of(0.0).equals(nan));
+        assertFalse(nan.equals(JsonLong.of(0L)));
+        assertFalse(JsonLong.of(0L).equals(nan));
+
+        final Value msgpackInfinity = ValueFactory.newFloat(Double.POSITIVE_INFINITY);
+        final JsonValue infinity = JsonValue.fromMsgpack(msgpackInfinity);
+        assertTrue(infinity.isJsonDouble());
+        assertEquals(Double.POSITIVE_INFINITY, infinity.asJsonDouble().doubleValue());
+        assertTrue(infinity.asJsonDouble().isIntegral());
+        assertFalse(infinity.asJsonDouble().isLongValue());
+        assertEquals(Long.MAX_VALUE, infinity.asJsonDouble().longValue());
+        assertEquals("Infinity", infinity.toJson());
+        assertEquals("Infinity", infinity.toString());
+        assertSame(msgpackInfinity, infinity.toMsgpack());
+        assertEquals(msgpackInfinity.hashCode(), infinity.hashCode());
+        assertTrue(infinity.equals(JsonValue.fromMsgpack(ValueFactory.newFloat(Double.POSITIVE_INFINITY))));
+        assertFalse(infinity.equals(JsonValue.fromMsgpack(ValueFactory.newFloat(Double.NEGATIVE_INFINITY))));
+
+        final Value msgpackNegativeInfinity = ValueFactory.newFloat(Double.NEGATIVE_INFINITY);
+        final JsonValue negativeInfinity = JsonValue.fromMsgpack(msgpackNegativeInfinity);
+        assertTrue(negativeInfinity.isJsonDouble());
+        assertEquals(Double.NEGATIVE_INFINITY, negativeInfinity.asJsonDouble().doubleValue());
+        assertTrue(negativeInfinity.asJsonDouble().isIntegral());
+        assertFalse(negativeInfinity.asJsonDouble().isLongValue());
+        assertEquals(Long.MIN_VALUE, negativeInfinity.asJsonDouble().longValue());
+        assertEquals("-Infinity", negativeInfinity.toJson());
+        assertEquals("-Infinity", negativeInfinity.toString());
+        assertSame(msgpackNegativeInfinity, negativeInfinity.toMsgpack());
+        assertEquals(msgpackNegativeInfinity.hashCode(), negativeInfinity.hashCode());
     }
 }

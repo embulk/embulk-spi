@@ -397,6 +397,12 @@ public interface JsonValue {
     /**
      * Returns a new JSON value based on the specified MessagePack's value.
      *
+     * <p>Two different {@link JsonDouble} instances that have {@code NaN} are considered to be equal by
+     * {@link JsonDouble#equals(Object)} since the Embulk SPI v0.12, in the same manner as {@link Double#equals(Object)}.
+     *
+     * <p>Note that they were usually considered NOT to be equal in the Embulk SPI v0.11 and earlier. They were equal
+     * only when they were created from the same {@link org.msgpack.value.ImmutableFloatValue} instance.
+     *
      * @param msgpackValue  the MessagePack's value
      * @return the new JSON value
      *
